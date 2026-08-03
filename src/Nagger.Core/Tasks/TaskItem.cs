@@ -10,7 +10,37 @@ public sealed record TaskItem(
     DateTimeOffset? LastReminderAt = null,
     OneShotTaskStatus Status = OneShotTaskStatus.Active,
     DateTimeOffset? CompletedAt = null,
-    DateTimeOffset? CancelledAt = null);
+    DateTimeOffset? CancelledAt = null)
+{
+    public TaskItem Complete(DateTimeOffset now) => TransitionTo(OneShotTaskStatus.Done, now);
+
+    public TaskItem Pause(DateTimeOffset now) => TransitionTo(OneShotTaskStatus.Paused, now);
+
+    public TaskItem Resume(DateTimeOffset now) => TransitionTo(OneShotTaskStatus.Active, now);
+
+    public TaskItem Cancel(DateTimeOffset now) => TransitionTo(OneShotTaskStatus.Cancelled, now);
+
+    private TaskItem TransitionTo(OneShotTaskStatus target, DateTimeOffset now)
+    {
+        if (!IsAllowed(Status, target))
+            throw new ValidationException(new Dictionary<string, string[]> { ["status"] = [$"Cannot transition a {Status.ToContractValue()} task to {target.ToContractValue()}."] });
+
+        return this with
+        {
+            Status = target,
+            UpdatedAt = now,
+            CompletedAt = target == OneShotTaskStatus.Done ? now : CompletedAt,
+            CancelledAt = target == OneShotTaskStatus.Cancelled ? now : CancelledAt
+        };
+    }
+
+    private static bool IsAllowed(OneShotTaskStatus current, OneShotTaskStatus target) => (current, target) switch
+    {
+        (OneShotTaskStatus.Active, OneShotTaskStatus.Paused or OneShotTaskStatus.Done or OneShotTaskStatus.Cancelled) => true,
+        (OneShotTaskStatus.Paused, OneShotTaskStatus.Active or OneShotTaskStatus.Cancelled) => true,
+        _ => false
+    };
+}
 
 public enum OneShotTaskStatus
 {
