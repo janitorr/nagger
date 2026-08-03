@@ -1,4 +1,6 @@
-[Development](DEVELOPMENT.md) | [Usage](USAGE.md)
+<p align="center">
+  <a href="DEVELOPMENT.md">Development</a> | <a href="USAGE.md">Usage</a>
+</p>
 
 ![Nagger banner](resources/repo_banner.jpg)
 
