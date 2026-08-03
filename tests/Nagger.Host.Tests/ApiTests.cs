@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Nagger.Core.Tasks;
 using Nagger.Host;
 using Nagger.Host.Infrastructure;
+using Shouldly;
 
 namespace Nagger.Host.Tests;
 
@@ -23,34 +24,34 @@ public sealed class ApiTests
         using var client = factory.CreateClient();
         var create = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "once" });
 
-        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        create.StatusCode.ShouldBe(HttpStatusCode.Created);
         using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
-        Assert.Equal(1, created.RootElement.GetProperty("id").GetInt64());
-        Assert.Equal("one-shot", created.RootElement.GetProperty("type").GetString());
-        Assert.Equal("2026-08-04T09:00:00+03:00", created.RootElement.GetProperty("dueAt").GetString());
-        Assert.Equal("once", created.RootElement.GetProperty("reminderPolicy").GetString());
-        Assert.NotEqual(JsonValueKind.Null, created.RootElement.GetProperty("createdAt").ValueKind);
-        Assert.NotEqual(JsonValueKind.Null, created.RootElement.GetProperty("updatedAt").ValueKind);
-        Assert.Equal(JsonValueKind.Null, created.RootElement.GetProperty("completedAt").ValueKind);
-        Assert.Equal(JsonValueKind.Null, created.RootElement.GetProperty("cancelledAt").ValueKind);
+        created.RootElement.GetProperty("id").GetInt64().ShouldBe(1);
+        created.RootElement.GetProperty("type").GetString().ShouldBe("one-shot");
+        created.RootElement.GetProperty("dueAt").GetString().ShouldBe("2026-08-04T09:00:00+03:00");
+        created.RootElement.GetProperty("reminderPolicy").GetString().ShouldBe("once");
+        created.RootElement.GetProperty("createdAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        created.RootElement.GetProperty("updatedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        created.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        created.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
 
         var report = await client.GetAsync("/reports/morning?date=2026-08-04");
-        Assert.Equal(HttpStatusCode.OK, report.StatusCode);
+        report.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var body = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
-        Assert.Equal("1", body.RootElement.GetProperty("schemaVersion").GetString());
-        Assert.NotEqual(JsonValueKind.Null, body.RootElement.GetProperty("generatedAt").ValueKind);
-        Assert.Equal(1, body.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32());
+        body.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("1");
+        body.RootElement.GetProperty("generatedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        body.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
         var item = body.RootElement.GetProperty("items")[0];
-        Assert.Equal("2026-08-04T09:00:00+03:00", item.GetProperty("dueAt").GetString());
-        Assert.Equal("due_today", item.GetProperty("dueState").GetString());
-        Assert.Equal(JsonValueKind.Null, item.GetProperty("daysOverdue").ValueKind);
-        Assert.Equal("once", item.GetProperty("reminderPolicy").GetString());
+        item.GetProperty("dueAt").GetString().ShouldBe("2026-08-04T09:00:00+03:00");
+        item.GetProperty("dueState").GetString().ShouldBe("due_today");
+        item.GetProperty("daysOverdue").ValueKind.ShouldBe(JsonValueKind.Null);
+        item.GetProperty("reminderPolicy").GetString().ShouldBe("once");
 
         using var scope = factory.Services.CreateScope();
         var persisted = await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync();
-        Assert.Equal("active", persisted.Status);
-        Assert.Null(persisted.CompletedAt);
-        Assert.Null(persisted.CancelledAt);
+        persisted.Status.ShouldBe("active");
+        persisted.CompletedAt.ShouldBeNull();
+        persisted.CancelledAt.ShouldBeNull();
     }
 
     [Fact]
@@ -60,12 +61,12 @@ public sealed class ApiTests
         using var client = factory.CreateClient();
         var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "", dueAt = "not-a-date", reminderPolicy = "daily" });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("title", out _));
-        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("dueAt", out _));
-        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("reminderPolicy", out _));
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/reports/morning")).StatusCode);
+        body.RootElement.GetProperty("errors").TryGetProperty("title", out _).ShouldBeTrue();
+        body.RootElement.GetProperty("errors").TryGetProperty("dueAt", out _).ShouldBeTrue();
+        body.RootElement.GetProperty("errors").TryGetProperty("reminderPolicy", out _).ShouldBeTrue();
+        (await client.GetAsync("/reports/morning")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -79,9 +80,9 @@ public sealed class ApiTests
         var second = await client.GetStringAsync("/reports/morning?date=2026-08-04");
         using var firstBody = JsonDocument.Parse(first);
         using var secondBody = JsonDocument.Parse(second);
-        Assert.Equal(1, firstBody.RootElement.GetProperty("summary").GetProperty("upcoming").GetInt32());
-        Assert.Equal(0, firstBody.RootElement.GetProperty("items").GetArrayLength());
-        Assert.Equal(firstBody.RootElement.GetProperty("items").GetArrayLength(), secondBody.RootElement.GetProperty("items").GetArrayLength());
+        firstBody.RootElement.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(1);
+        firstBody.RootElement.GetProperty("items").GetArrayLength().ShouldBe(0);
+        secondBody.RootElement.GetProperty("items").GetArrayLength().ShouldBe(firstBody.RootElement.GetProperty("items").GetArrayLength());
     }
 
     [Theory]
@@ -98,16 +99,16 @@ public sealed class ApiTests
 
         var response = await client.PostAsync($"/tasks/{id}/{action}", null);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(status, body.RootElement.GetProperty("status").GetString());
+        body.RootElement.GetProperty("status").GetString().ShouldBe(status);
         if (status == "paused")
         {
-            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("completedAt").ValueKind);
-            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("cancelledAt").ValueKind);
+            body.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+            body.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
         }
         else
-            Assert.NotEqual(JsonValueKind.Null, body.RootElement.GetProperty(status == "done" ? "completedAt" : "cancelledAt").ValueKind);
+            body.RootElement.GetProperty(status == "done" ? "completedAt" : "cancelledAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
     }
 
     [Fact]
@@ -122,11 +123,11 @@ public sealed class ApiTests
 
         var response = await client.PostAsync($"/tasks/{id}/resume", null);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("active", body.RootElement.GetProperty("status").GetString());
-        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("completedAt").ValueKind);
-        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("cancelledAt").ValueKind);
+        body.RootElement.GetProperty("status").GetString().ShouldBe("active");
+        body.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        body.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
     }
 
     [Fact]
@@ -135,7 +136,7 @@ public sealed class ApiTests
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/tasks/42/complete", null)).StatusCode);
+        (await client.PostAsync("/tasks/42/complete", null)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -150,9 +151,9 @@ public sealed class ApiTests
 
         var response = await client.PostAsync($"/tasks/{id}/complete", null);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("status", out _));
+        body.RootElement.GetProperty("errors").TryGetProperty("status", out _).ShouldBeTrue();
     }
 
     [Theory]
@@ -171,8 +172,8 @@ public sealed class ApiTests
         var report = await client.GetAsync("/reports/morning?date=2026-08-04");
 
         using var body = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
-        Assert.Equal(0, body.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32());
-        Assert.Equal(0, body.RootElement.GetProperty("items").GetArrayLength());
+        body.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(0);
+        body.RootElement.GetProperty("items").GetArrayLength().ShouldBe(0);
     }
 
     [Fact]
@@ -187,8 +188,8 @@ public sealed class ApiTests
 
         var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Secret task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
 
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        Assert.DoesNotContain("storage failure", await response.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        (await response.Content.ReadAsStringAsync()).ShouldNotContain("storage failure", Case.Insensitive);
     }
 
     [Fact]
@@ -199,13 +200,13 @@ public sealed class ApiTests
 
         var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "once" });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var errors = body.RootElement.GetProperty("errors");
-        Assert.True(errors.TryGetProperty("dueAt", out _));
-        Assert.True(errors.TryGetProperty("reminderPolicy", out _));
-        Assert.False(errors.TryGetProperty("due_at", out _));
-        Assert.False(errors.TryGetProperty("reminder_policy", out _));
+        errors.TryGetProperty("dueAt", out _).ShouldBeTrue();
+        errors.TryGetProperty("reminderPolicy", out _).ShouldBeTrue();
+        errors.TryGetProperty("due_at", out _).ShouldBeFalse();
+        errors.TryGetProperty("reminder_policy", out _).ShouldBeFalse();
     }
 
     [Fact]
@@ -218,8 +219,8 @@ public sealed class ApiTests
         AppLog.TaskCreated(logger, 42);
         AppLog.UnexpectedFailure(logger, "/tasks/one-shot", "InvalidOperationException");
 
-        Assert.Equal([1000, 1001, 1002, 1003], logger.EventIds);
-        Assert.DoesNotContain("Pay rent", string.Join(" ", logger.Messages));
+        logger.EventIds.ShouldBe([1000, 1001, 1002, 1003]);
+        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
     }
 
     [Fact]
@@ -232,25 +233,25 @@ public sealed class ApiTests
         var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
         var names = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
             .Select(tool => tool.GetProperty("name").GetString()).ToList();
-        Assert.Contains("create_one_shot_task", names);
-        Assert.Contains("complete_one_shot_task", names);
-        Assert.Contains("pause_one_shot_task", names);
-        Assert.Contains("resume_one_shot_task", names);
-        Assert.Contains("cancel_one_shot_task", names);
-        Assert.Contains("get_morning_report", names);
+        names.ShouldContain("create_one_shot_task");
+        names.ShouldContain("complete_one_shot_task");
+        names.ShouldContain("pause_one_shot_task");
+        names.ShouldContain("resume_one_shot_task");
+        names.ShouldContain("cancel_one_shot_task");
+        names.ShouldContain("get_morning_report");
 
         var createTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
             .Single(tool => tool.GetProperty("name").GetString() == "create_one_shot_task");
-        Assert.Contains("single task", createTool.GetProperty("description").GetString(), StringComparison.OrdinalIgnoreCase);
+        createTool.GetProperty("description").GetString()!.ShouldContain("single task", Case.Insensitive);
         var requiredCreateFields = createTool.GetProperty("inputSchema").GetProperty("required").EnumerateArray()
             .Select(field => field.GetString()).ToList();
-        Assert.Contains("title", requiredCreateFields);
-        Assert.Contains("dueAt", requiredCreateFields);
-        Assert.Contains("reminderPolicy", requiredCreateFields);
+        requiredCreateFields.ShouldContain("title");
+        requiredCreateFields.ShouldContain("dueAt");
+        requiredCreateFields.ShouldContain("reminderPolicy");
 
         var pauseTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
             .Single(tool => tool.GetProperty("name").GetString() == "pause_one_shot_task");
-        Assert.Contains("temporarily", pauseTool.GetProperty("description").GetString(), StringComparison.OrdinalIgnoreCase);
+        pauseTool.GetProperty("description").GetString()!.ShouldContain("temporarily", Case.Insensitive);
 
         var create = await SendMcpAsync(client, session, 3, "tools/call", new
         {
@@ -259,14 +260,14 @@ public sealed class ApiTests
         });
         var created = create.RootElement.GetProperty("result").GetProperty("structuredContent");
         var id = created.GetProperty("id").GetInt64();
-        Assert.Equal("active", created.GetProperty("status").GetString());
+        created.GetProperty("status").GetString().ShouldBe("active");
 
         var pause = await SendMcpAsync(client, session, 4, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
-        Assert.Equal("paused", pause.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString());
+        pause.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString().ShouldBe("paused");
         var resume = await SendMcpAsync(client, session, 5, "tools/call", new { name = "resume_one_shot_task", arguments = new { id } });
-        Assert.Equal("active", resume.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString());
+        resume.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString().ShouldBe("active");
         var complete = await SendMcpAsync(client, session, 6, "tools/call", new { name = "complete_one_shot_task", arguments = new { id } });
-        Assert.Equal("done", complete.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString());
+        complete.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString().ShouldBe("done");
 
         var secondCreate = await SendMcpAsync(client, session, 7, "tools/call", new
         {
@@ -275,11 +276,11 @@ public sealed class ApiTests
         });
         var secondId = secondCreate.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
         var cancel = await SendMcpAsync(client, session, 8, "tools/call", new { name = "cancel_one_shot_task", arguments = new { id = secondId } });
-        Assert.Equal("cancelled", cancel.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString());
+        cancel.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString().ShouldBe("cancelled");
 
         var report = await SendMcpAsync(client, session, 9, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
-        Assert.Equal("1", report.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("schemaVersion").GetString());
-        Assert.Equal(0, report.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("summary").GetProperty("dueToday").GetInt32());
+        report.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("schemaVersion").GetString().ShouldBe("1");
+        report.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(0);
     }
 
     [Fact]
@@ -294,10 +295,10 @@ public sealed class ApiTests
             name = "create_one_shot_task",
             arguments = new { title = "", dueAt = "not-a-date", reminderPolicy = "daily" }
         });
-        Assert.True(invalidCreate.RootElement.GetProperty("result").GetProperty("isError").GetBoolean());
+        invalidCreate.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
 
         var unknown = await SendMcpAsync(client, session, 3, "tools/call", new { name = "complete_one_shot_task", arguments = new { id = 42 } });
-        Assert.True(unknown.RootElement.GetProperty("result").GetProperty("isError").GetBoolean());
+        unknown.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
 
         var create = await SendMcpAsync(client, session, 4, "tools/call", new
         {
@@ -308,11 +309,11 @@ public sealed class ApiTests
         await SendMcpAsync(client, session, 5, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
 
         var invalidTransition = await SendMcpAsync(client, session, 6, "tools/call", new { name = "complete_one_shot_task", arguments = new { id } });
-        Assert.True(invalidTransition.RootElement.GetProperty("result").GetProperty("isError").GetBoolean());
+        invalidTransition.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
 
         using var scope = factory.Services.CreateScope();
         var persisted = await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync();
-        Assert.Equal("paused", persisted.Status);
+        persisted.Status.ShouldBe("paused");
     }
 
     private static async Task<McpSession> InitializeMcpAsync(HttpClient client)
