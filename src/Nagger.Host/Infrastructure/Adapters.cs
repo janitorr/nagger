@@ -34,9 +34,3 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
 
     private static TaskItem ToModel(TaskEntity entity) => new(entity.Id, entity.Title, entity.DueAt, entity.ReminderPolicy == "once" ? ReminderPolicy.Once : entity.ReminderPolicy == "weekly-until-done" ? ReminderPolicy.WeeklyUntilDone : ReminderPolicy.None, entity.CreatedAt, entity.UpdatedAt, entity.LastReminderAt, OneShotTaskStatuses.FromContractValue(entity.Status), entity.CompletedAt, entity.CancelledAt);
 }
-
-public sealed class ConfiguredClock(IConfiguration configuration) : IClock
-{
-    public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
-    public TimeZoneInfo TimeZone => TimeZoneInfo.FindSystemTimeZoneById(configuration["Nagger:TimeZone"] ?? "Europe/Helsinki");
-}
