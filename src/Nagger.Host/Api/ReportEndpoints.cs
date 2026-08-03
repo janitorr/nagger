@@ -1,0 +1,45 @@
+using System.Text.Json.Serialization;
+using Mediator;
+using Nagger.Core.Tasks;
+
+namespace Nagger.Host.Api;
+
+public static class ReportEndpoints
+{
+    public static void MapReportEndpoints(this WebApplication app)
+    {
+        app.MapGet("/reports/morning", async (string? date, IMediator mediator, CancellationToken cancellationToken) =>
+        {
+            var report = await mediator.Send(new MorningReportQuery(date), cancellationToken);
+            return Results.Ok(MorningReportResponse.From(report));
+        });
+    }
+}
+
+public sealed record MorningReportResponse(
+    [property: JsonPropertyName("schema_version")] string SchemaVersion,
+    [property: JsonPropertyName("generated_at")] DateTimeOffset GeneratedAt,
+    string Date,
+    MorningReportSummaryResponse Summary,
+    IReadOnlyList<MorningReportItemResponse> Items)
+{
+    public static MorningReportResponse From(MorningReport report) => new(
+        report.SchemaVersion,
+        report.GeneratedAt,
+        report.Date.ToString("yyyy-MM-dd"),
+        new MorningReportSummaryResponse(report.Summary.DueToday, report.Summary.Overdue, report.Summary.Upcoming),
+        report.Items.Select(x => new MorningReportItemResponse(x.Id, x.Title, x.DueAt, x.DueState, x.DaysOverdue, x.ReminderPolicy)).ToList());
+}
+
+public sealed record MorningReportSummaryResponse(
+    [property: JsonPropertyName("due_today")] int DueToday,
+    [property: JsonPropertyName("overdue")] int Overdue,
+    [property: JsonPropertyName("upcoming")] int Upcoming);
+
+public sealed record MorningReportItemResponse(
+    long Id,
+    string Title,
+    [property: JsonPropertyName("due_at")] DateTimeOffset DueAt,
+    [property: JsonPropertyName("due_state")] string DueState,
+    [property: JsonPropertyName("days_overdue")] int? DaysOverdue,
+    [property: JsonPropertyName("reminder_policy")] string ReminderPolicy);
