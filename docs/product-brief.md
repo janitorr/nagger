@@ -1,7 +1,7 @@
 ---
 title: Nagger Product Brief
 created: 2026-08-02
-updated: 2026-08-02
+updated: 2026-08-03
 tags:
   - type/product-brief
   - project/hermes
@@ -14,9 +14,9 @@ status: draft
 
 ## Purpose
 
-Create a deterministic local service that manages personal reminders, then exposes clean JSON for the Hermes Morning Digest to summarize.
+Create a deterministic local service that manages personal reminders and exposes them through REST and MCP for an assistant to use.
 
-A shopping ledger is documented as a future phase, but is not part of the first implementation.
+The current release proves the one-shot task lifecycle and deterministic morning report. Recurrence, reminder delivery, and a shopping ledger remain planned product capabilities rather than implied shipping behavior.
 
 The service exists so the morning update can report useful things without an LLM guessing from free-form notes.
 
@@ -26,7 +26,7 @@ Important personal obligations can disappear into notes, memory, or an incomplet
 
 ## Users and consumers
 
-- **Primary user:** an AI assistant that creates and manages reminders on the person’s behalf through validated service commands.
+- **Primary user:** an AI assistant that creates and manages reminders on the person’s behalf through validated REST or MCP commands.
 - **Beneficiary:** one person managing personal tasks and recurring obligations; they receive the reminders and remain the source of task intent.
 - **Morning Digest:** a user-facing briefing created by the AI assistant from the deterministic report.
 - **Future local client:** may read task state and submit validated commands; it never infers task state from prose.
@@ -36,9 +36,9 @@ Important personal obligations can disappear into notes, memory, or an incomplet
 | Use case                          | Problem solved                                                     | Successful outcome                                                                                                                          |
 | --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Capture a one-shot task           | A specific obligation may be forgotten.                            | The assistant creates a task from the person’s explicit request, with a due date and reminder policy.                                       |
-| Capture a recurring task          | Repeated maintenance work is easy to lose track of.                | The assistant creates an interval task, such as every two or six months; completion schedules the next occurrence from the completion date. |
+| Capture a recurring task *(planned)* | Repeated maintenance work is easy to lose track of.             | The assistant creates an interval task, such as every two or six months; completion schedules the next occurrence from the completion date. |
 | Generate the morning digest       | The person should not reconstruct priorities from scattered notes. | The AI assistant reads the deterministic report and creates a concise Morning Digest for the person, covering due-today and overdue tasks.  |
-| Receive follow-up reminders       | A due item can remain unfinished after its first reminder.         | `weekly-until-done` tasks are eligible for weekly follow-up until completed or cancelled.                                                   |
+| Receive follow-up reminders *(planned)* | A due item can remain unfinished after its first reminder.    | `weekly-until-done` tasks are eligible for weekly follow-up until completed or cancelled.                                                   |
 | Complete, pause, or cancel a task | The system must reflect reality without deleting history.          | The assistant submits an explicit validated command; terminal task records remain intact.                                                   |
 
 ## Product principles
@@ -51,14 +51,19 @@ Important personal obligations can disappear into notes, memory, or an incomplet
 
 ## Scope
 
-### In scope
+### Available now
 
 - One-shot tasks.
-- Recurring tasks.
-- Weekly reminder escalation until done.
 - Explicit task statuses.
 - Created/updated/completed timestamp tracking.
 - Morning Digest report endpoint.
+- REST and MCP task operations.
+
+### Planned next
+
+- Recurring tasks.
+- Actual reminder delivery and weekly escalation until done.
+- Deployment automation.
 
 ### Future phase: Shopping ledger
 
@@ -84,8 +89,8 @@ Tasks represent things that need doing.
 
 Task kinds:
 
-- `one-shot` — has a specific due date/time.
-- `recurring` — repeats by a configured cadence.
+- `one-shot` — has a specific due date/time. Available now.
+- `recurring` — repeats by a configured cadence. Planned.
 
 Task identity:
 
@@ -102,9 +107,11 @@ Task statuses:
 
 Reminder policies:
 
-- `none` — report only by due state, no reminder escalation.
-- `once` — remind once when due.
-- `weekly-until-done` — after the first reminder, remind weekly until status changes.
+- `none` — report only by due state, with no delivery behavior.
+- `once` — reserved for a single delivery when delivery is implemented.
+- `weekly-until-done` — reserved for weekly follow-up after the first delivery is implemented.
+
+The policy is stored and returned today. Nagger does not yet emit or record reminder delivery.
 
 ### Shopping — future phase
 
@@ -120,7 +127,7 @@ Shopping items may include preferred store, category, quantity, and priority.
 
 ## Data format
 
-Use a structured representation per item. The examples below are illustrative; the product requirement is storage-agnostic.
+The public REST and MCP representations use camelCase. The examples below describe observable product state; SQLite remains an implementation detail.
 
 ### One-shot task example
 
@@ -130,24 +137,22 @@ id: 42
 title: Renew passport
 type: one-shot
 status: active
-created_at: 2026-08-02T09:20:00+03:00
-updated_at: 2026-08-02T09:20:00+03:00
-completed_at: null
-cancelled_at: null
+createdAt: 2026-08-02T09:20:00+03:00
+updatedAt: 2026-08-02T09:20:00+03:00
+completedAt: null
+cancelledAt: null
 
 schedule:
-  due_at: 2026-09-02T09:00:00+03:00
-  reminder_policy: weekly-until-done
-  next_reminder_at: 2026-09-02T09:00:00+03:00
-  last_reminded_at: null
+  dueAt: 2026-09-02T09:00:00+03:00
+  reminderPolicy: weekly-until-done
 
 reporting:
-  include_in_morning_update: true
+  includeInMorningUpdate: true
   priority: normal
-  report_when: due-or-overdue
+  reportWhen: due-or-overdue
 ```
 
-### Recurring task example
+### Recurring task example *(planned)*
 
 ```yaml
 kind: task
@@ -155,37 +160,37 @@ id: 43
 title: Replace filter
 type: recurring
 status: active
-created_at: 2026-08-02T09:20:00+03:00
-updated_at: 2026-08-02T09:20:00+03:00
-last_completed_at: null
-cancelled_at: null
+createdAt: 2026-08-02T09:20:00+03:00
+updatedAt: 2026-08-02T09:20:00+03:00
+lastCompletedAt: null
+cancelledAt: null
 
 schedule:
   recurrence:
     every: 1
     unit: months
-  next_due_at: 2026-09-02T09:00:00+03:00
-  reminder_policy: weekly-until-done
-  next_reminder_at: 2026-09-02T09:00:00+03:00
-  last_reminded_at: null
+  nextDueAt: 2026-09-02T09:00:00+03:00
+  reminderPolicy: weekly-until-done
+  nextReminderAt: 2026-09-02T09:00:00+03:00
+  lastRemindedAt: null
 
 reporting:
-  include_in_morning_update: true
+  includeInMorningUpdate: true
   priority: normal
-  report_when: due-or-overdue
+  reportWhen: due-or-overdue
 ```
 
-### Future shopping item example
+### Future shopping item example *(planned)*
 
 ```yaml
 kind: shopping-item
 id: milk
 name: Milk
 status: needed
-created_at: 2026-08-02T09:30:00+03:00
-updated_at: 2026-08-02T09:30:00+03:00
-completed_at: null
-cancelled_at: null
+createdAt: 2026-08-02T09:30:00+03:00
+updatedAt: 2026-08-02T09:30:00+03:00
+completedAt: null
+cancelledAt: null
 
 quantity: 1
 unit: carton
@@ -194,20 +199,21 @@ store: Lidl Länsikeskus
 priority: normal
 
 reporting:
-  include_in_morning_update: true
+  includeInMorningUpdate: true
 ```
 
 ## Deterministic task behavior
 
 ### Due-state calculation
 
-For each active task, compare the calendar date of its due timestamp with the requested report date:
+For each active one-shot task, compare the calendar date of its `dueAt` timestamp with the requested report date:
 
-- Use `due_at` for a `one-shot` task and `next_due_at` for a `recurring` task.
 - Due date before the report date: `overdue`.
 - Due date equal to the report date: `due_today`.
 - Due date after the report date: `upcoming`.
 - If status is not `active`, exclude from normal due reports.
+
+A future recurring task will apply the same rule to `nextDueAt`.
 
 Time of day may order items within a report, but it does not change a task from `due_today` to `overdue`.
 
@@ -217,9 +223,9 @@ Time of day may order items within a report, but it does not change a task from 
 - Stored timestamps use ISO-8601 date-time values with an explicit UTC offset.
 - The service timezone gives the report date an unambiguous meaning through midnight and daylight-saving transitions.
 
-### First-version recurrence
+### Recurrence *(planned)*
 
-Recurring tasks use an interval:
+Recurring tasks will use an interval:
 
 ```yaml
 recurrence:
@@ -229,7 +235,7 @@ recurrence:
 
 - `every` is a positive integer.
 - Supported `unit` values are `days`, `weeks`, and `months`.
-- Completing a recurring task keeps its status `active`, sets `last_completed_at`, and calculates `next_due_at` from the completion timestamp.
+- Completing a recurring task keeps its status `active`, sets `lastCompletedAt`, and calculates `nextDueAt` from the completion timestamp.
 - For month-based recurrence, if the target day does not exist in the target month, use that month’s last day.
 - Complex calendar rules, holiday exclusions, and natural-language recurrence remain out of scope for the first version.
 
@@ -237,12 +243,12 @@ recurrence:
 
 Report endpoints are read-only. Generating, previewing, retrying, or reading a Morning Digest report must not update task state, reminder timestamps, or shopping state.
 
-The delivery mechanism records an actual reminder separately through `POST /tasks/{id}/reminders/emitted`. When that command succeeds:
+Actual delivery and delivery tracking are planned. The intended delivery command is `POST /tasks/{id}/reminders/emitted`. When it is implemented and succeeds:
 
-- Set `last_reminded_at` to current timestamp.
-- Set `updated_at` to current timestamp.
-- If `reminder_policy` is `weekly-until-done`, set `next_reminder_at` to current timestamp plus 7 days.
-- If `reminder_policy` is `once`, clear `next_reminder_at` or mark reminder as sent.
+- Set `lastRemindedAt` to current timestamp.
+- Set `updatedAt` to current timestamp.
+- If `reminderPolicy` is `weekly-until-done`, set `nextReminderAt` to current timestamp plus 7 days.
+- If `reminderPolicy` is `once`, clear `nextReminderAt` or mark reminder as sent.
 
 ### Task state transitions
 
@@ -266,18 +272,20 @@ Task status changes use strict transitions:
 When a one-shot task is completed:
 
 - Set `status: done`.
-- Set `completed_at` to current timestamp.
-- Set `updated_at` to current timestamp.
+- Set `completedAt` to current timestamp.
+- Set `updatedAt` to current timestamp.
 - Exclude from future reminder reports.
+
+### Recurring completion *(planned)*
 
 When a recurring task is completed:
 
 - Keep `status: active`.
-- Set `last_completed_at` to current timestamp.
-- Set `updated_at` to current timestamp.
-- Calculate `next_due_at` from the completion timestamp and its recurrence interval.
-- Reset `next_reminder_at` to the new `next_due_at`.
-- Clear `last_reminded_at`.
+- Set `lastCompletedAt` to current timestamp.
+- Set `updatedAt` to current timestamp.
+- Calculate `nextDueAt` from the completion timestamp and its recurrence interval.
+- Reset `nextReminderAt` to the new `nextDueAt`.
+- Clear `lastRemindedAt`.
 
 ## Future shopping behavior
 
@@ -285,99 +293,73 @@ Shopping items are simpler than tasks.
 
 - `needed` items appear in shopping reports.
 - `bought` and `cancelled` items are excluded from normal morning reports.
-- Completing an item sets `status: bought`, `completed_at`, and `updated_at`.
+- Completing an item sets `status: bought`, `completedAt`, and `updatedAt`.
 - LLM-created shopping items must go through the service API for validation and normalization.
 
 ## Service shape
 
-The product needs a stable interface for reading reports and changing state. Technology and deployment decisions are tracked in [[Nagger Product Design]].
+Nagger offers a stable interface for reading reports and changing state. REST remains available for local clients; MCP gives a personal-assistant LLM the same validated capabilities through tool calls. Technology and deployment decisions are tracked in [[Nagger Product Design]].
 
-### First-version access boundary
+### Access boundary
 
-The first version listens on localhost only. It is intended for Hermes and other local processes on the Pi, not direct LAN or public access.
+Nagger listens on localhost only. It is intended for Hermes and other local processes on the Pi, not direct LAN or public access.
 
 Authentication, remote access, and multi-user support are deferred until a real consumer requires them.
 
-## API sketch
+## Available interfaces
 
-### Report endpoints
-
-```http
-GET /report/morning?date=2026-08-03
-GET /tasks/report?date=2026-08-03
-```
-
-### Task creation endpoints
+### REST
 
 ```http
 POST /tasks/one-shot
-POST /tasks/recurring
-```
-
-The endpoint determines the task kind and validates its required schedule fields. One-shot creation requires `due_at`; recurring creation requires an interval recurrence and `next_due_at`. Both endpoints require an explicit `reminder_policy`; no endpoint supplies a hidden default.
-
-### Existing task endpoints
-
-```http
-GET /tasks
-GET /tasks/{id}
-PATCH /tasks/{id}
 POST /tasks/{id}/complete
 POST /tasks/{id}/pause
 POST /tasks/{id}/resume
 POST /tasks/{id}/cancel
-POST /tasks/{id}/reminders/emitted
+GET /reports/morning?date=2026-08-03
 ```
 
-### Future shopping endpoints
+One-shot creation requires `title`, `dueAt`, and an explicit `reminderPolicy`; no endpoint supplies a hidden default. Lifecycle operations use the numeric task `id` and return the updated task.
 
-```http
-GET /shopping/report?date=2026-08-03
-GET /shopping/items
-GET /shopping/items/{id}
-POST /shopping/items
-PATCH /shopping/items/{id}
-POST /shopping/items/{id}/bought
-POST /shopping/items/{id}/cancel
-```
+### MCP
+
+MCP-compatible clients connect through streamable HTTP at `/mcp`. The server exposes tools for creating, completing, pausing, resuming, and cancelling one-shot tasks, plus `get_morning_report`. Tool results use the same observable task and report fields as REST.
+
+### Planned interfaces
+
+Recurring creation, task editing/listing, reminder-emission recording, and shopping endpoints remain planned. They are not part of the current public contract.
 
 ## Morning Digest JSON shape
 
-The Morning Digest should consume JSON like this and summarize it in plain language.
+The Morning Digest consumes this deterministic report and summarizes it in plain language.
 
 Report contract rules:
 
-- Every report includes `schema_version` and `generated_at`.
+- Every report includes `schemaVersion` and `generatedAt`.
 - Consumers must ignore unknown fields.
-- A breaking change to required fields requires a new major `schema_version`.
-- Versioning exists so a Hermes skill or other future consumer can reliably interpret the report; it does not require a migration framework.
+- A breaking change to required fields requires a new major `schemaVersion`.
+- Versioning lets a Hermes skill or other consumer interpret the report reliably; it does not require a migration framework.
 
 ```json
 {
-  "schema_version": 1,
-  "generated_at": "2026-08-03T07:00:00+03:00",
+  "schemaVersion": "1",
+  "generatedAt": "2026-08-03T07:00:00+03:00",
   "date": "2026-08-03",
-  "tasks": {
-    "summary": {
-      "due_today": 1,
-      "overdue": 2,
-      "upcoming": 3
-    },
-    "items": [
-      {
-        "id": 42,
-        "title": "Renew passport",
-        "type": "one-shot",
-        "status": "active",
-        "due_state": "overdue",
-        "due_at": "2026-08-01T09:00:00+03:00",
-        "days_overdue": 2,
-        "next_reminder_at": "2026-08-03T09:00:00+03:00",
-        "priority": "normal",
-        "morning_update_hint": "Mention briefly."
-      }
-    ]
-  }
+  "summary": {
+    "dueToday": 1,
+    "overdue": 2,
+    "upcoming": 3
+  },
+  "items": [
+    {
+      "id": 42,
+      "title": "Renew passport",
+      "dueAt": "2026-08-01T09:00:00+03:00",
+      "dueState": "overdue",
+      "daysOverdue": 2,
+      "reminderPolicy": "once"
+    }
+  ]
 }
 ```
 
@@ -386,24 +368,29 @@ Report contract rules:
 Allowed:
 
 - Read report JSON and summarize it.
-- Create new tasks through the service API when the person explicitly requests them and required fields are supplied.
-- Draft state changes for user approval.
+- Create one-shot tasks and request lifecycle changes through REST or MCP when the person explicitly instructs the assistant.
+- Return validation errors rather than guessing missing schedule values.
 
 Not allowed by default:
 
-- Direct storage edits bypassing validation.
+- Direct storage edits that bypass validation.
 - Silent creation of cron jobs, services, or persistent automation.
 - Guessing recurrence from prose.
 - Marking tasks complete without explicit user instruction.
 
-## First version acceptance criteria
+## Current acceptance criteria
 
-- A user can define one-shot and recurring tasks using the chosen storage/input format.
-- The service returns deterministic due-state JSON for Morning Digest.
-- Status changes update `updated_at` and relevant completion/cancellation timestamps.
-- Reminder emission updates `last_reminded_at` and `next_reminder_at` deterministically.
+- A user can create one-shot tasks with an explicit due timestamp and reminder policy through REST or MCP.
+- The service returns deterministic due-state JSON for Morning Digest through REST or MCP.
+- Allowed lifecycle changes update `updatedAt` and relevant completion/cancellation timestamps.
+- Report reads are pure and do not alter task state or delivery state.
 - No LLM inference is required to decide what is due.
 - Core behavior works without cloud dependency.
+
+## Planned acceptance criteria
+
+- Recurring tasks calculate their next occurrence deterministically on completion.
+- Reminder delivery records `lastRemindedAt` and `nextReminderAt` deterministically.
 
 ## Open questions
 
