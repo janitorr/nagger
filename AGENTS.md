@@ -8,13 +8,21 @@
 
 ## Testing
 
-- Name new or modified tests `Subject_GivenCondition_WhenAction_ThenOutcome`, for example `CreateTask_GivenOffsetTimestamp_WhenHandled_ThenPersistsTask`. Do not rename existing tests solely to apply this convention.
+- Name new or modified tests `Subject_GivenCondition_WhenAction_ThenOutcome`. The action describes the domain operation, such as `WhenCompleteRequested`, rather than generic transport wording such as `WhenPosted`. Do not rename existing tests solely to apply this convention.
 
 ## Boundaries
 
 - `src/Nagger.Core` owns task behavior and vertical feature slices in `Tasks/`. It must not reference ASP.NET Core, EF Core/SQLite, runtime configuration, or the system clock; add required dependencies as ports in `Ports.cs` and exercise them in Core tests.
-- `src/Nagger.Host` is the HTTP/SQLite adapter and composition root. `Program.cs` maps endpoints and registers Mediator; `Infrastructure/` implements Core ports and owns EF mappings and migrations.
+- `src/Nagger.Host` is the HTTP/SQLite adapter and composition root. `Infrastructure/` implements Core ports and owns EF mappings and migrations.
 - EF migrations are applied automatically on Host startup. Keep schema changes, `NaggerDbContext` mappings, and migrations together under `src/Nagger.Host/Infrastructure/Migrations/`.
+
+## Host Organization
+
+- Keep `Program.cs` limited to application composition, middleware ordering, endpoint-group registration, database migration, and `app.Run()`.
+- Group HTTP endpoint mappings and their contracts under `src/Nagger.Host/Api/` by API area. Register service groups through extension methods under `src/Nagger.Host/Composition/`.
+- Centralize HTTP exception-to-response mapping with `IExceptionHandler`; endpoints must not catch domain exceptions to produce HTTP responses.
+- Keep one infrastructure adapter concern per file, and name the file after its primary type, such as `SqliteTaskStore.cs` and `ConfiguredClock.cs`.
+- Request middleware owns HTTP request/status/duration logging. Mediator behaviors, if introduced, are for Core command/query dispatch diagnostics and do not replace HTTP logging.
 
 ## Runtime And Contracts
 
