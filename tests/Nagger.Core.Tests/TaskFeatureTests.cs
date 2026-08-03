@@ -21,10 +21,10 @@ public sealed class TaskFeatureTests
     [Theory]
     [InlineData(null, "2026-08-04T09:00:00+03:00", "once", "title")]
     [InlineData(" ", "2026-08-04T09:00:00+03:00", "once", "title")]
-    [InlineData("Task", null, "once", "due_at")]
-    [InlineData("Task", "2026-08-04T09:00:00", "once", "due_at")]
-    [InlineData("Task", "2026-08-04T09:00:00+03:00", null, "reminder_policy")]
-    [InlineData("Task", "2026-08-04T09:00:00+03:00", "daily", "reminder_policy")]
+    [InlineData("Task", null, "once", "dueAt")]
+    [InlineData("Task", "2026-08-04T09:00:00", "once", "dueAt")]
+    [InlineData("Task", "2026-08-04T09:00:00+03:00", null, "reminderPolicy")]
+    [InlineData("Task", "2026-08-04T09:00:00+03:00", "daily", "reminderPolicy")]
     public async Task Rejects_invalid_creation_values(string? title, string? dueAt, string? policy, string field)
     {
         var store = new MemoryStore();
@@ -46,7 +46,7 @@ public sealed class TaskFeatureTests
 
         var exception = await Assert.ThrowsAsync<ValidationException>(async () => await handler.Handle(new("Task", dueAt, "once"), default));
 
-        Assert.Contains("due_at", exception.Errors.Keys);
+        Assert.Contains("dueAt", exception.Errors.Keys);
         Assert.Empty(store.Tasks);
     }
 

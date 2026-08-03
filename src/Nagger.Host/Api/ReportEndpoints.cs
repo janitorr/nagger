@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Mediator;
 using Nagger.Core.Tasks;
 
@@ -17,8 +16,8 @@ public static class ReportEndpoints
 }
 
 public sealed record MorningReportResponse(
-    [property: JsonPropertyName("schema_version")] string SchemaVersion,
-    [property: JsonPropertyName("generated_at")] DateTimeOffset GeneratedAt,
+    string SchemaVersion,
+    DateTimeOffset GeneratedAt,
     string Date,
     MorningReportSummaryResponse Summary,
     IReadOnlyList<MorningReportItemResponse> Items)
@@ -32,14 +31,14 @@ public sealed record MorningReportResponse(
 }
 
 public sealed record MorningReportSummaryResponse(
-    [property: JsonPropertyName("due_today")] int DueToday,
-    [property: JsonPropertyName("overdue")] int Overdue,
-    [property: JsonPropertyName("upcoming")] int Upcoming);
+    int DueToday,
+    int Overdue,
+    int Upcoming);
 
 public sealed record MorningReportItemResponse(
     long Id,
     string Title,
-    [property: JsonPropertyName("due_at")] DateTimeOffset DueAt,
-    [property: JsonPropertyName("due_state")] string DueState,
-    [property: JsonPropertyName("days_overdue")] int? DaysOverdue,
-    [property: JsonPropertyName("reminder_policy")] string ReminderPolicy);
+    DateTimeOffset DueAt,
+    string DueState,
+    int? DaysOverdue,
+    string ReminderPolicy);

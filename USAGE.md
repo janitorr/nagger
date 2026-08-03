@@ -21,8 +21,8 @@ Request payload:
 ```json
 {
   "title": "Pay rent",
-  "due_at": "2026-08-04T09:00:00+03:00",
-  "reminder_policy": "once"
+  "dueAt": "2026-08-04T09:00:00+03:00",
+  "reminderPolicy": "once"
 }
 ```
 
@@ -31,8 +31,8 @@ Required fields:
 | Field | Type | Rules |
 | --- | --- | --- |
 | `title` | string | Nonempty; surrounding whitespace is trimmed. |
-| `due_at` | string | ISO-8601 date-time with an explicit offset or `Z`. |
-| `reminder_policy` | string | One of `none`, `once`, or `weekly-until-done`. |
+| `dueAt` | string | ISO-8601 date-time with an explicit offset or `Z`. |
+| `reminderPolicy` | string | One of `none`, `once`, or `weekly-until-done`. |
 
 Successful response: `201 Created`
 
@@ -42,12 +42,12 @@ Successful response: `201 Created`
   "title": "Pay rent",
   "type": "one-shot",
   "status": "active",
-  "due_at": "2026-08-04T09:00:00+03:00",
-  "reminder_policy": "once",
-  "created_at": "2026-08-03T10:00:00+00:00",
-  "updated_at": "2026-08-03T10:00:00+00:00",
-  "completed_at": null,
-  "cancelled_at": null
+  "dueAt": "2026-08-04T09:00:00+03:00",
+  "reminderPolicy": "once",
+  "createdAt": "2026-08-03T10:00:00+00:00",
+  "updatedAt": "2026-08-03T10:00:00+00:00",
+  "completedAt": null,
+  "cancelledAt": null
 }
 ```
 
@@ -63,7 +63,7 @@ with `200 OK`.
 | Resume | `POST /tasks/{id}/resume` | `paused` | `active` |
 | Cancel | `POST /tasks/{id}/cancel` | `active`, `paused` | `cancelled` |
 
-Completing sets `completed_at`; cancelling sets `cancelled_at`; pausing and
+Completing sets `completedAt`; cancelling sets `cancelledAt`; pausing and
 resuming leave both fields `null`. Only active reminders appear in reports.
 
 Example:
@@ -86,11 +86,11 @@ Response: `200 OK`
 
 ```json
 {
-  "schema_version": "1",
-  "generated_at": "2026-08-03T10:00:00+00:00",
+  "schemaVersion": "1",
+  "generatedAt": "2026-08-03T10:00:00+00:00",
   "date": "2026-08-04",
   "summary": {
-    "due_today": 1,
+    "dueToday": 1,
     "overdue": 1,
     "upcoming": 1
   },
@@ -98,18 +98,18 @@ Response: `200 OK`
     {
       "id": 1,
       "title": "Pay rent",
-      "due_at": "2026-08-04T09:00:00+03:00",
-      "due_state": "due_today",
-      "days_overdue": null,
-      "reminder_policy": "once"
+      "dueAt": "2026-08-04T09:00:00+03:00",
+      "dueState": "due_today",
+      "daysOverdue": null,
+      "reminderPolicy": "once"
     },
     {
       "id": 2,
       "title": "Submit expense report",
-      "due_at": "2026-08-02T09:00:00+03:00",
-      "due_state": "overdue",
-      "days_overdue": 2,
-      "reminder_policy": "none"
+      "dueAt": "2026-08-02T09:00:00+03:00",
+      "dueState": "overdue",
+      "daysOverdue": 2,
+      "reminderPolicy": "none"
     }
   ]
 }
@@ -121,7 +121,7 @@ reminder's local due date. The report classifies active reminders as:
 | Classification | Rule | Included in `items` |
 | --- | --- | --- |
 | `due_today` | Local due date equals requested date | Yes |
-| `overdue` | Local due date precedes requested date | Yes, with `days_overdue` |
+| `overdue` | Local due date precedes requested date | Yes, with `daysOverdue` |
 | Upcoming | Local due date follows requested date | No; counted only in `summary.upcoming` |
 
 The report is read-only and does not alter reminder state or timestamps.
@@ -134,7 +134,7 @@ report `date` return `400 Bad Request`:
 ```json
 {
   "errors": {
-    "due_at": [
+    "dueAt": [
       "Due timestamp must be an ISO-8601 value with an explicit UTC offset."
     ]
   }

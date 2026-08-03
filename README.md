@@ -45,13 +45,13 @@ The host applies EF Core migrations on startup. Its SQLite database is created a
 
 ## API Quickstart
 
-Create a one-shot task. `due_at` must be an ISO-8601 date-time with an explicit UTC offset, and `reminder_policy` must be `none`, `once`, or `weekly-until-done`.
+Create a one-shot task. `dueAt` must be an ISO-8601 date-time with an explicit UTC offset, and `reminderPolicy` must be `none`, `once`, or `weekly-until-done`.
 
 ```bash
 curl -i http://localhost:5246/tasks/one-shot \
   --request POST \
   --header 'Content-Type: application/json' \
-  --data '{"title":"Pay rent","due_at":"2026-08-04T09:00:00+03:00","reminder_policy":"once"}'
+  --data '{"title":"Pay rent","dueAt":"2026-08-04T09:00:00+03:00","reminderPolicy":"once"}'
 ```
 
 A successful request returns `201 Created` and the persisted task. Invalid input returns `400 Bad Request` with an `errors` object keyed by field name.
@@ -62,7 +62,7 @@ Request a morning report for a calendar date:
 curl 'http://localhost:5246/reports/morning?date=2026-08-04'
 ```
 
-The response contains a `schema_version`, `generated_at`, the requested `date`, summary counts for `due_today`, `overdue`, and `upcoming`, and item details for due-today and overdue tasks. Upcoming tasks contribute only to the summary. Report reads do not modify tasks, reminder state, or timestamps.
+The response contains a `schemaVersion`, `generatedAt`, the requested `date`, summary counts for `dueToday`, `overdue`, and `upcoming`, and item details for due-today and overdue tasks. Upcoming tasks contribute only to the summary. Report reads do not modify tasks, reminder state, or timestamps.
 
 ## Configuration
 
