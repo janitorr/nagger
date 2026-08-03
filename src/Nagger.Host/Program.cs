@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using Nagger.Host.Api;
 using Nagger.Core.Tasks;
+using Nagger.Host.Api;
+using Nagger.Host.Composition.Mediator;
+using Nagger.Host.Composition.Persistence;
 using Nagger.Host;
 using Nagger.Host.Infrastructure;
 
@@ -10,15 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(builder.Configuration["Urls"] ?? "http://127.0.0.1:5000");
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole();
-builder.Services.AddDbContext<NaggerDbContext>(options =>
-    options.UseSqlite($"Data Source={builder.Configuration["Nagger:DatabasePath"] ?? "nagger.db"}"));
-builder.Services.AddScoped<ITaskStore, SqliteTaskStore>();
-builder.Services.AddSingleton<IClock, ConfiguredClock>();
-builder.Services.AddMediator(options =>
-{
-    options.ServiceLifetime = ServiceLifetime.Scoped;
-    options.Assemblies = [typeof(TaskItem)];
-});
+builder.Services.AddNaggerPersistence(builder.Configuration);
+builder.Services.AddNaggerMediator();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
