@@ -1,3 +1,5 @@
+![Nagger banner](resources/repo_banner.jpg)
+
 # Nagger
 
 Nagger is a local ASP.NET Core service for storing personal reminders and producing deterministic JSON for a morning digest. It uses SQLite and runs as a single process.
