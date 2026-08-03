@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nagger.Core/Nagger.Core.csproj" />
+    <Project Path="src/Nagger.Host/Nagger.Host.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nagger.Core.Tests/Nagger.Core.Tests.csproj" />
+    <Project Path="tests/Nagger.Host.Tests/Nagger.Host.Tests.csproj" />
+  </Folder>
+</Solution>
