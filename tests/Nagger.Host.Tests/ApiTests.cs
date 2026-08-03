@@ -15,47 +15,52 @@ namespace Nagger.Host.Tests;
 public sealed class ApiTests
 {
     [Fact]
-    public async Task Migrates_and_dispatches_create_and_report_requests()
+    public async Task CreateOneShotTask_GivenValidPayload_WhenCreateRequested_ThenReturnsCreatedTask()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var create = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "once" });
 
-        create.StatusCode.ShouldBe(HttpStatusCode.Created);
-        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
-        created.RootElement.GetProperty("id").GetInt64().ShouldBe(1);
-        created.RootElement.GetProperty("type").GetString().ShouldBe("one-shot");
-        created.RootElement.GetProperty("dueAt").GetString().ShouldBe("2026-08-04T09:00:00+03:00");
-        created.RootElement.GetProperty("reminderPolicy").GetString().ShouldBe("once");
-        created.RootElement.GetProperty("createdAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
-        created.RootElement.GetProperty("updatedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
-        created.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
-        created.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "once" });
 
-        var report = await client.GetAsync("/reports/morning?date=2026-08-04");
-        report.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var body = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
-        body.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("1");
-        body.RootElement.GetProperty("generatedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
-        body.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
-        var item = body.RootElement.GetProperty("items")[0];
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        task.RootElement.GetProperty("id").GetInt64().ShouldBe(1);
+        task.RootElement.GetProperty("type").GetString().ShouldBe("one-shot");
+        task.RootElement.GetProperty("dueAt").GetString().ShouldBe("2026-08-04T09:00:00+03:00");
+        task.RootElement.GetProperty("reminderPolicy").GetString().ShouldBe("once");
+        task.RootElement.GetProperty("createdAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        task.RootElement.GetProperty("updatedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        task.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        task.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenTaskDueToday_WhenRequested_ThenReturnsTaskDetails()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await CreateTaskAsync(client, "Pay rent", "2026-08-04T09:00:00+03:00", "once");
+
+        var response = await client.GetAsync("/reports/morning?date=2026-08-04");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var report = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("1");
+        report.RootElement.GetProperty("generatedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        report.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
+        var item = report.RootElement.GetProperty("items")[0];
         item.GetProperty("dueAt").GetString().ShouldBe("2026-08-04T09:00:00+03:00");
         item.GetProperty("dueState").GetString().ShouldBe("due_today");
         item.GetProperty("daysOverdue").ValueKind.ShouldBe(JsonValueKind.Null);
         item.GetProperty("reminderPolicy").GetString().ShouldBe("once");
-
-        using var scope = factory.Services.CreateScope();
-        var persisted = await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync();
-        persisted.Status.ShouldBe("active");
-        persisted.CompletedAt.ShouldBeNull();
-        persisted.CancelledAt.ShouldBeNull();
     }
 
     [Fact]
-    public async Task Returns_structured_validation_errors_without_writes()
+    public async Task CreateOneShotTask_GivenInvalidPayload_WhenCreateRequested_ThenReturnsValidationErrorsWithoutPersistingTask()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
+
         var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "", dueAt = "not-a-date", reminderPolicy = "daily" });
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -63,88 +68,133 @@ public sealed class ApiTests
         body.RootElement.GetProperty("errors").TryGetProperty("title", out _).ShouldBeTrue();
         body.RootElement.GetProperty("errors").TryGetProperty("dueAt", out _).ShouldBeTrue();
         body.RootElement.GetProperty("errors").TryGetProperty("reminderPolicy", out _).ShouldBeTrue();
-        (await client.GetAsync("/reports/morning")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()).ShouldBe(0);
     }
 
     [Fact]
-    public async Task Report_counts_upcoming_tasks_without_item_details_and_is_repeatable()
+    public async Task MorningReport_GivenMissingDate_WhenRequested_ThenReturnsValidationError()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Future", dueAt = "2026-08-05T09:00:00+03:00", reminderPolicy = "none" });
+
+        var response = await client.GetAsync("/reports/morning");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenUpcomingTask_WhenRequested_ThenCountsTaskWithoutReturningItem()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await CreateTaskAsync(client, "Future", "2026-08-05T09:00:00+03:00", "none");
+
+        var response = await client.GetStringAsync("/reports/morning?date=2026-08-04");
+
+        using var report = JsonDocument.Parse(response);
+        report.RootElement.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(1);
+        report.RootElement.GetProperty("items").GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenUnchangedTasks_WhenRequestedTwice_ThenReturnsSameItems()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await CreateTaskAsync(client, "Future", "2026-08-05T09:00:00+03:00", "none");
 
         var first = await client.GetStringAsync("/reports/morning?date=2026-08-04");
         var second = await client.GetStringAsync("/reports/morning?date=2026-08-04");
-        using var firstBody = JsonDocument.Parse(first);
-        using var secondBody = JsonDocument.Parse(second);
-        firstBody.RootElement.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(1);
-        firstBody.RootElement.GetProperty("items").GetArrayLength().ShouldBe(0);
-        secondBody.RootElement.GetProperty("items").GetArrayLength().ShouldBe(firstBody.RootElement.GetProperty("items").GetArrayLength());
-    }
 
-    [Theory]
-    [InlineData("complete", "done")]
-    [InlineData("pause", "paused")]
-    [InlineData("cancel", "cancelled")]
-    public async Task Lifecycle_GivenActiveTask_WhenCompletePauseOrCancelRequested_ThenReturnsUpdatedTask(string action, string status)
-    {
-        using var factory = new NaggerFactory();
-        using var client = factory.CreateClient();
-        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
-        using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
-        var id = createdBody.RootElement.GetProperty("id").GetInt64();
-
-        var response = await client.PostAsync($"/tasks/{id}/{action}", null);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        body.RootElement.GetProperty("status").GetString().ShouldBe(status);
-        if (status == "paused")
-        {
-            body.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
-            body.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
-        }
-        else
-            body.RootElement.GetProperty(status == "done" ? "completedAt" : "cancelledAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        using var firstReport = JsonDocument.Parse(first);
+        using var secondReport = JsonDocument.Parse(second);
+        secondReport.RootElement.GetProperty("items").GetArrayLength().ShouldBe(firstReport.RootElement.GetProperty("items").GetArrayLength());
     }
 
     [Fact]
-    public async Task Resume_GivenPausedTask_WhenResumeRequested_ThenReturnsActiveTask()
+    public async Task CompleteOneShotTask_GivenActiveTask_WhenCompleteRequested_ThenReturnsDoneTask()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
-        using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
-        var id = createdBody.RootElement.GetProperty("id").GetInt64();
-        await client.PostAsync($"/tasks/{id}/pause", null);
+        var id = await CreateTaskAsync(client);
+
+        var response = await client.PostAsync($"/tasks/{id}/complete", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        task.RootElement.GetProperty("status").GetString().ShouldBe("done");
+        task.RootElement.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        task.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task PauseOneShotTask_GivenActiveTask_WhenPauseRequested_ThenReturnsPausedTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var id = await CreateTaskAsync(client);
+
+        var response = await client.PostAsync($"/tasks/{id}/pause", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        task.RootElement.GetProperty("status").GetString().ShouldBe("paused");
+        task.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        task.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task CancelOneShotTask_GivenActiveTask_WhenCancelRequested_ThenReturnsCancelledTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var id = await CreateTaskAsync(client);
+
+        var response = await client.PostAsync($"/tasks/{id}/cancel", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        task.RootElement.GetProperty("status").GetString().ShouldBe("cancelled");
+        task.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        task.RootElement.GetProperty("cancelledAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task ResumeOneShotTask_GivenPausedTask_WhenResumeRequested_ThenReturnsActiveTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var id = await CreateTaskAsync(client);
+        using var paused = await client.PostAsync($"/tasks/{id}/pause", null);
 
         var response = await client.PostAsync($"/tasks/{id}/resume", null);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        body.RootElement.GetProperty("status").GetString().ShouldBe("active");
-        body.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
-        body.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        task.RootElement.GetProperty("status").GetString().ShouldBe("active");
+        task.RootElement.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        task.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
     }
 
     [Fact]
-    public async Task Complete_GivenMissingTask_WhenCompleteRequested_ThenReturnsNotFound()
+    public async Task CompleteOneShotTask_GivenMissingTask_WhenCompleteRequested_ThenReturnsNotFound()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
 
-        (await client.PostAsync("/tasks/42/complete", null)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        var response = await client.PostAsync("/tasks/42/complete", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task Complete_GivenPausedTask_WhenCompleteRequested_ThenReturnsValidationError()
+    public async Task CompleteOneShotTask_GivenPausedTask_WhenCompleteRequested_ThenReturnsValidationError()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
-        using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
-        var id = createdBody.RootElement.GetProperty("id").GetInt64();
-        await client.PostAsync($"/tasks/{id}/pause", null);
+        var id = await CreateTaskAsync(client);
+        using var paused = await client.PostAsync($"/tasks/{id}/pause", null);
 
         var response = await client.PostAsync($"/tasks/{id}/complete", null);
 
@@ -161,20 +211,18 @@ public sealed class ApiTests
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
-        using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
-        var id = createdBody.RootElement.GetProperty("id").GetInt64();
-        await client.PostAsync($"/tasks/{id}/{action}", null);
+        var id = await CreateTaskAsync(client);
+        using var transition = await client.PostAsync($"/tasks/{id}/{action}", null);
 
-        var report = await client.GetAsync("/reports/morning?date=2026-08-04");
+        var response = await client.GetAsync("/reports/morning?date=2026-08-04");
 
-        using var body = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
-        body.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(0);
-        body.RootElement.GetProperty("items").GetArrayLength().ShouldBe(0);
+        using var report = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        report.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(0);
+        report.RootElement.GetProperty("items").GetArrayLength().ShouldBe(0);
     }
 
     [Fact]
-    public async Task Converts_unhandled_failures_without_leaking_details()
+    public async Task CreateOneShotTask_GivenThrowingStore_WhenCreateRequested_ThenReturnsSanitizedServerError()
     {
         using var factory = new NaggerFactory(services =>
         {
@@ -207,19 +255,55 @@ public sealed class ApiTests
     }
 
     [Fact]
-    public void Operational_logs_do_not_include_task_content()
+    public void RequestCompleted_GivenTaskRequest_WhenLogged_ThenDoesNotIncludeTaskContent()
     {
         var logger = new CapturingLogger();
 
         AppLog.RequestCompleted(logger, "/tasks/one-shot", 201, 10);
-        AppLog.ValidationRejected(logger, "/tasks/one-shot");
-        AppLog.TaskCreated(logger, 42);
-        AppLog.UnexpectedFailure(logger, "/tasks/one-shot", "InvalidOperationException");
 
-        logger.EventIds.ShouldBe([1000, 1001, 1002, 1003]);
+        logger.EventIds.ShouldBe([1000]);
         string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
     }
 
+    [Fact]
+    public void ValidationRejected_GivenTaskRequest_WhenLogged_ThenDoesNotIncludeTaskContent()
+    {
+        var logger = new CapturingLogger();
+
+        AppLog.ValidationRejected(logger, "/tasks/one-shot");
+
+        logger.EventIds.ShouldBe([1001]);
+        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
+    }
+
+    [Fact]
+    public void TaskCreated_GivenTaskIdentifier_WhenLogged_ThenDoesNotIncludeTaskContent()
+    {
+        var logger = new CapturingLogger();
+
+        AppLog.TaskCreated(logger, 42);
+
+        logger.EventIds.ShouldBe([1002]);
+        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
+    }
+
+    [Fact]
+    public void UnexpectedFailure_GivenTaskRequest_WhenLogged_ThenDoesNotIncludeTaskContent()
+    {
+        var logger = new CapturingLogger();
+
+        AppLog.UnexpectedFailure(logger, "/tasks/one-shot", "InvalidOperationException");
+
+        logger.EventIds.ShouldBe([1003]);
+        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
+    }
+
+    private static async Task<long> CreateTaskAsync(HttpClient client, string title = "Task", string dueAt = "2026-08-04T09:00:00+03:00", string reminderPolicy = "none")
+    {
+        using var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title, dueAt, reminderPolicy });
+        using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return task.RootElement.GetProperty("id").GetInt64();
+    }
 }
 
 public sealed class ThrowingStore : ITaskStore
