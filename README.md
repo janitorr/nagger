@@ -1,3 +1,5 @@
+[Development](DEVELOPMENT.md) | [Usage](USAGE.md)
+
 ![Nagger banner](resources/repo_banner.jpg)
 
 # Nagger
@@ -27,11 +29,3 @@ Nagger gives your personal-assistant LLM a dependable place to put the things yo
 - Reminder delivery and weekly follow-ups until a task is actually done.
 - A shopping ledger for the things you will definitely remember at the shop. Until you do not.
 - Deployment automation, so Nagger can get back to its important work: judging your follow-through.
-
-## Documentation
-
-- [Development guide](DEVELOPMENT.md)
-- [API usage reference](USAGE.md)
-- [One-shot task creation contract](openspec/specs/one-shot-task-creation/spec.md)
-- [One-shot task lifecycle contract](openspec/specs/one-shot-task-lifecycle/spec.md)
-- [Morning task report contract](openspec/specs/morning-task-report/spec.md)
