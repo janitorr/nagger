@@ -1,0 +1,32 @@
+## ADDED Requirements
+
+### Requirement: Produce a versioned morning task report
+The service SHALL provide `GET /reports/morning?date=YYYY-MM-DD`. For a valid requested date, it SHALL return JSON containing `schema_version`, `generated_at`, `date`, a task summary with counts for `due_today`, `overdue`, and `upcoming`, and task item detail for active tasks due today or overdue.
+
+The service SHALL use its configured IANA timezone to interpret the requested report date and the local calendar date of each task due timestamp. It SHALL classify an active task as `overdue` when its due date precedes the requested date, `due_today` when the dates are equal, and `upcoming` when its due date follows the requested date.
+
+#### Scenario: Report a due-today task
+- **WHEN** an active one-shot task has a due timestamp whose calendar date in the configured timezone equals the requested report date
+- **THEN** the report includes the task with `due_state` of `due_today` and increments the due-today summary count
+
+#### Scenario: Report an overdue task
+- **WHEN** an active one-shot task has a due timestamp whose calendar date in the configured timezone precedes the requested report date
+- **THEN** the report includes the task with `due_state` of `overdue`, includes its days overdue value, and increments the overdue summary count
+
+#### Scenario: Count an upcoming task without including item detail
+- **WHEN** an active one-shot task has a due timestamp whose calendar date in the configured timezone follows the requested report date
+- **THEN** the report increments the upcoming summary count and does not include the task in report item detail
+
+### Requirement: Keep report reads free of state changes
+Generating a morning report SHALL NOT create, update, or delete tasks, and SHALL NOT update task timestamps or reminder state.
+
+#### Scenario: Read a report repeatedly
+- **WHEN** a client requests the same morning report more than once
+- **THEN** task records and reminder timestamps remain unchanged by each report read
+
+### Requirement: Validate the report date
+The service SHALL reject a morning report request without a `date` query parameter or with a date that is not formatted as `YYYY-MM-DD`.
+
+#### Scenario: Reject an invalid report date
+- **WHEN** a client requests the morning report with a missing or malformed date
+- **THEN** the service returns a structured JSON validation error and does not modify task state
