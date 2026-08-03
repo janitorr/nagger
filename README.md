@@ -7,10 +7,11 @@ Nagger is a local ASP.NET Core service for storing personal reminders and produc
 The implemented vertical slice supports:
 
 - creating active one-shot tasks;
+- completing, pausing, resuming, and cancelling one-shot tasks;
 - persisting them in SQLite; and
 - reporting due-today, overdue, and upcoming tasks for a requested date.
 
-Recurring tasks, task lifecycle operations, reminder delivery, shopping, and deployment automation are not implemented yet.
+Recurring tasks, reminder delivery, shopping, and deployment automation are not implemented yet.
 
 ## Prerequisites
 
@@ -95,6 +96,7 @@ Host integration tests use temporary SQLite databases and do not require a runni
 
 ## Further Reading
 
+- [API usage reference](USAGE.md)
 - [One-shot task creation contract](openspec/specs/one-shot-task-creation/spec.md)
 - [Morning task report contract](openspec/specs/morning-task-report/spec.md)
 - [Product design](docs/product-design.md)
