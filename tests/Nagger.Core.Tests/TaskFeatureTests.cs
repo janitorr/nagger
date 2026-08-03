@@ -83,7 +83,7 @@ public sealed class TaskFeatureTests
     [InlineData(OneShotTaskStatus.Paused)]
     [InlineData(OneShotTaskStatus.Done)]
     [InlineData(OneShotTaskStatus.Cancelled)]
-    public async Task MorningReport_GivenInactiveTask_WhenHandled_ThenExcludesTask(OneShotTaskStatus status)
+    public async Task MorningReport_GivenInactiveTask_WhenRequested_ThenExcludesTask(OneShotTaskStatus status)
     {
         var store = new MemoryStore(new TaskItem(1, "Inactive", new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero), ReminderPolicy.None, default, default, Status: status));
 
@@ -110,7 +110,7 @@ public sealed class TaskFeatureTests
     [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Active)]
     [InlineData(OneShotTaskStatus.Active, OneShotTaskStatus.Cancelled)]
     [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Cancelled)]
-    public async Task Transition_GivenAllowedSourceAndTarget_WhenCommandIsHandled_ThenUpdatesTask(OneShotTaskStatus initial, OneShotTaskStatus expected)
+    public async Task LifecycleTransition_GivenAllowedSourceAndTarget_WhenRequested_ThenUpdatesTask(OneShotTaskStatus initial, OneShotTaskStatus expected)
     {
         var store = new MemoryStore(new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial));
         var handler = HandlerFor(expected, store);
@@ -137,7 +137,7 @@ public sealed class TaskFeatureTests
     }
 
     [Fact]
-    public async Task Complete_GivenMissingTask_WhenCommandIsHandled_ThenThrowsNotFound()
+    public async Task Complete_GivenMissingTask_WhenCompleteRequested_ThenThrowsNotFound()
     {
         var handler = new CompleteOneShotTaskHandler(new MemoryStore(), new TestClock());
 
@@ -149,7 +149,7 @@ public sealed class TaskFeatureTests
     [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Done)]
     [InlineData(OneShotTaskStatus.Done, OneShotTaskStatus.Active)]
     [InlineData(OneShotTaskStatus.Cancelled, OneShotTaskStatus.Paused)]
-    public async Task Transition_GivenInvalidOrTerminalSourceAndTarget_WhenCommandIsHandled_ThenRejectsWithoutWrite(OneShotTaskStatus initial, OneShotTaskStatus target)
+    public async Task LifecycleTransition_GivenInvalidOrTerminalSourceAndTarget_WhenRequested_ThenRejectsWithoutWrite(OneShotTaskStatus initial, OneShotTaskStatus target)
     {
         var original = new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial);
         var store = new MemoryStore(original);
