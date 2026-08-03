@@ -1,8 +1,7 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using Nagger.Core.Tasks;
 using Nagger.Host.Api;
+using Nagger.Host.Api.ExceptionHandling;
 using Nagger.Host.Composition.Mediator;
 using Nagger.Host.Composition.Persistence;
 using Nagger.Host;
@@ -14,26 +13,15 @@ builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole();
 builder.Services.AddNaggerPersistence(builder.Configuration);
 builder.Services.AddNaggerMediator();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler(options => options.AllowStatusCode404Response = true);
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Database.MigrateAsync();
 
-app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
-{
-    var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
-    if (error is ValidationException validation)
-    {
-        context.Response.StatusCode = StatusCodes.Status400BadRequest;
-        await context.Response.WriteAsJsonAsync(new ValidationError(validation.Errors));
-        AppLog.ValidationRejected(app.Logger, context.Request.Path);
-        return;
-    }
-
-    AppLog.UnexpectedFailure(app.Logger, context.Request.Path, error?.GetType().Name ?? "Unknown");
-    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-    await context.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred." });
-}));
+app.UseExceptionHandler();
 
 app.Use(async (context, next) =>
 {
