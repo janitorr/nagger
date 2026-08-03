@@ -90,6 +90,16 @@ public sealed class TaskFeatureTests
         report.Items.ShouldHaveSingleItem().ReminderPolicy.ShouldBe("weekly-until-done");
     }
 
+    [Fact]
+    public async Task MorningReport_GivenWeeklyReminderPolicy_WhenRequested_ThenReturnsContractValue()
+    {
+        var store = new MemoryStore(new TaskItem(1, "Weekly", new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero), ReminderPolicy.WeeklyUntilDone, default, default));
+
+        var report = await new MorningReportHandler(store, new TestClock(TimeZoneInfo.Utc)).Handle(new("2026-08-04"), default);
+
+        Assert.Equal("weekly-until-done", Assert.Single(report.Items).ReminderPolicy);
+    }
+
     [Theory]
     [InlineData(OneShotTaskStatus.Paused)]
     [InlineData(OneShotTaskStatus.Done)]
