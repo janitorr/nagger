@@ -14,34 +14,43 @@ public sealed class TaskNotFoundException(long id) : Exception($"Task {id} was n
 
 public sealed class CompleteOneShotTaskHandler(ITaskStore store, IClock clock) : ICommandHandler<CompleteOneShotTaskCommand, TaskItem>
 {
-    public ValueTask<TaskItem> Handle(CompleteOneShotTaskCommand command, CancellationToken cancellationToken) =>
-        OneShotTaskLifecycle.TransitionAsync(command.Id, store, clock, static (task, now) => task.Complete(now), cancellationToken);
+    public async ValueTask<TaskItem> Handle(CompleteOneShotTaskCommand command, CancellationToken cancellationToken)
+    {
+        var task = await store.GetByIdAsync(command.Id, cancellationToken) ?? throw new TaskNotFoundException(command.Id);
+        var updated = task.Complete(clock.UtcNow);
+        await store.UpdateAsync(updated, cancellationToken);
+        return updated;
+    }
 }
 
 public sealed class PauseOneShotTaskHandler(ITaskStore store, IClock clock) : ICommandHandler<PauseOneShotTaskCommand, TaskItem>
 {
-    public ValueTask<TaskItem> Handle(PauseOneShotTaskCommand command, CancellationToken cancellationToken) =>
-        OneShotTaskLifecycle.TransitionAsync(command.Id, store, clock, static (task, now) => task.Pause(now), cancellationToken);
+    public async ValueTask<TaskItem> Handle(PauseOneShotTaskCommand command, CancellationToken cancellationToken)
+    {
+        var task = await store.GetByIdAsync(command.Id, cancellationToken) ?? throw new TaskNotFoundException(command.Id);
+        var updated = task.Pause(clock.UtcNow);
+        await store.UpdateAsync(updated, cancellationToken);
+        return updated;
+    }
 }
 
 public sealed class ResumeOneShotTaskHandler(ITaskStore store, IClock clock) : ICommandHandler<ResumeOneShotTaskCommand, TaskItem>
 {
-    public ValueTask<TaskItem> Handle(ResumeOneShotTaskCommand command, CancellationToken cancellationToken) =>
-        OneShotTaskLifecycle.TransitionAsync(command.Id, store, clock, static (task, now) => task.Resume(now), cancellationToken);
+    public async ValueTask<TaskItem> Handle(ResumeOneShotTaskCommand command, CancellationToken cancellationToken)
+    {
+        var task = await store.GetByIdAsync(command.Id, cancellationToken) ?? throw new TaskNotFoundException(command.Id);
+        var updated = task.Resume(clock.UtcNow);
+        await store.UpdateAsync(updated, cancellationToken);
+        return updated;
+    }
 }
 
 public sealed class CancelOneShotTaskHandler(ITaskStore store, IClock clock) : ICommandHandler<CancelOneShotTaskCommand, TaskItem>
 {
-    public ValueTask<TaskItem> Handle(CancelOneShotTaskCommand command, CancellationToken cancellationToken) =>
-        OneShotTaskLifecycle.TransitionAsync(command.Id, store, clock, static (task, now) => task.Cancel(now), cancellationToken);
-}
-
-internal static class OneShotTaskLifecycle
-{
-    public static async ValueTask<TaskItem> TransitionAsync(long id, ITaskStore store, IClock clock, Func<TaskItem, DateTimeOffset, TaskItem> transition, CancellationToken cancellationToken)
+    public async ValueTask<TaskItem> Handle(CancelOneShotTaskCommand command, CancellationToken cancellationToken)
     {
-        var task = await store.GetByIdAsync(id, cancellationToken) ?? throw new TaskNotFoundException(id);
-        var updated = transition(task, clock.UtcNow);
+        var task = await store.GetByIdAsync(command.Id, cancellationToken) ?? throw new TaskNotFoundException(command.Id);
+        var updated = task.Cancel(clock.UtcNow);
         await store.UpdateAsync(updated, cancellationToken);
         return updated;
     }
