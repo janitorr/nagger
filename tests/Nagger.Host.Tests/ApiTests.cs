@@ -74,7 +74,7 @@ public sealed class ApiTests
     [InlineData("complete", "done")]
     [InlineData("pause", "paused")]
     [InlineData("cancel", "cancelled")]
-    public async Task Lifecycle_GivenActiveTask_WhenPosted_ThenReturnsUpdatedTask(string action, string status)
+    public async Task Lifecycle_GivenActiveTask_WhenCompletePauseOrCancelRequested_ThenReturnsUpdatedTask(string action, string status)
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
@@ -97,7 +97,7 @@ public sealed class ApiTests
     }
 
     [Fact]
-    public async Task Resume_GivenPausedTask_WhenPosted_ThenReturnsActiveTask()
+    public async Task Resume_GivenPausedTask_WhenResumeRequested_ThenReturnsActiveTask()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
@@ -116,7 +116,7 @@ public sealed class ApiTests
     }
 
     [Fact]
-    public async Task Lifecycle_GivenMissingTask_WhenPosted_ThenReturnsNotFound()
+    public async Task Complete_GivenMissingTask_WhenCompleteRequested_ThenReturnsNotFound()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
@@ -125,7 +125,7 @@ public sealed class ApiTests
     }
 
     [Fact]
-    public async Task Complete_GivenPausedTask_WhenPosted_ThenReturnsValidationError()
+    public async Task Complete_GivenPausedTask_WhenCompleteRequested_ThenReturnsValidationError()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
@@ -145,7 +145,7 @@ public sealed class ApiTests
     [InlineData("pause")]
     [InlineData("complete")]
     [InlineData("cancel")]
-    public async Task Report_GivenInactiveTask_WhenRead_ThenExcludesTask(string action)
+    public async Task MorningReport_GivenInactiveTask_WhenRequested_ThenExcludesTask(string action)
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
