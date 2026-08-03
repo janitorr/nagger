@@ -79,6 +79,16 @@ public sealed class TaskFeatureTests
         Assert.Equal(1, report.Summary.DueToday);
     }
 
+    [Fact]
+    public async Task MorningReport_GivenWeeklyReminderPolicy_WhenRequested_ThenReturnsContractValue()
+    {
+        var store = new MemoryStore(new TaskItem(1, "Weekly", new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero), ReminderPolicy.WeeklyUntilDone, default, default));
+
+        var report = await new MorningReportHandler(store, new TestClock(TimeZoneInfo.Utc)).Handle(new("2026-08-04"), default);
+
+        Assert.Equal("weekly-until-done", Assert.Single(report.Items).ReminderPolicy);
+    }
+
     [Theory]
     [InlineData(OneShotTaskStatus.Paused)]
     [InlineData(OneShotTaskStatus.Done)]
@@ -149,6 +159,7 @@ public sealed class TaskFeatureTests
     [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Done)]
     [InlineData(OneShotTaskStatus.Done, OneShotTaskStatus.Active)]
     [InlineData(OneShotTaskStatus.Cancelled, OneShotTaskStatus.Paused)]
+    [InlineData(OneShotTaskStatus.Done, OneShotTaskStatus.Cancelled)]
     public async Task LifecycleTransition_GivenInvalidOrTerminalSourceAndTarget_WhenRequested_ThenRejectsWithoutWrite(OneShotTaskStatus initial, OneShotTaskStatus target)
     {
         var original = new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial);
