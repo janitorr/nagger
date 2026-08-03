@@ -2,7 +2,13 @@
 
 # Nagger
 
-Nagger is a local ASP.NET Core service for storing personal reminders and producing deterministic JSON for a morning digest. It uses SQLite and runs as a single process.
+**FEEL LIKE SOMETHING IS MISSING?** Appointments slipping away? Commitments falling through the cracks? No one around to **NAG** you when you forget?
+
+**NAGGER** IS THE SOLUTION.
+
+Hand **NAGGER** to your personal-assistant LLM. Tell it to store your important tasks and notifications. Then let **NAGGER** deliver the daily reminder rundown of everything coming up.
+
+**NAGGER:** because tomorrow is too late to remember.
 
 ## Current Scope
 
