@@ -27,14 +27,7 @@ public static class TaskEndpoints
 
     private static async Task<IResult> RunLifecycleCommand(ICommand<TaskItem> command, IMediator mediator, CancellationToken cancellationToken)
     {
-        try
-        {
-            return Results.Ok(TaskResponse.From(await mediator.Send(command, cancellationToken)));
-        }
-        catch (TaskNotFoundException)
-        {
-            return Results.NotFound();
-        }
+        return Results.Ok(TaskResponse.From(await mediator.Send(command, cancellationToken)));
     }
 }
 
