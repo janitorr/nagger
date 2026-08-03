@@ -14,11 +14,10 @@ public sealed class CreateOneShotTaskHandler(ITaskStore store, IClock clock)
         if (string.IsNullOrWhiteSpace(command.Title))
             errors["title"] = ["Title is required."];
 
-        var hasOffset = command.DueAt is not null &&
-            (command.DueAt.EndsWith("Z", StringComparison.OrdinalIgnoreCase) ||
-             System.Text.RegularExpressions.Regex.IsMatch(command.DueAt, "[+-]\\d{2}:\\d{2}$"));
         var dueAt = default(DateTimeOffset);
-        if (!hasOffset || !DateTimeOffset.TryParse(command.DueAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out dueAt))
+        if (command.DueAt is null || !DateTimeOffset.TryParseExact(command.DueAt,
+                ["yyyy-MM-dd'T'HH:mm:sszzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz", "yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'"],
+                CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out dueAt))
             errors["due_at"] = ["Due timestamp must be an ISO-8601 value with an explicit UTC offset."];
 
         if (!ReminderPolicies.TryParse(command.ReminderPolicy, out var reminderPolicy))
