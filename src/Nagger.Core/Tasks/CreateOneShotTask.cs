@@ -18,10 +18,10 @@ public sealed class CreateOneShotTaskHandler(ITaskStore store, IClock clock)
         if (command.DueAt is null || !DateTimeOffset.TryParseExact(command.DueAt,
                 ["yyyy-MM-dd'T'HH:mm:sszzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz", "yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'"],
                 CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out dueAt))
-            errors["due_at"] = ["Due timestamp must be an ISO-8601 value with an explicit UTC offset."];
+            errors["dueAt"] = ["Due timestamp must be an ISO-8601 value with an explicit UTC offset."];
 
         if (!ReminderPolicies.TryParse(command.ReminderPolicy, out var reminderPolicy))
-            errors["reminder_policy"] = ["Reminder policy must be none, once, or weekly-until-done."];
+            errors["reminderPolicy"] = ["Reminder policy must be none, once, or weekly-until-done."];
 
         if (errors.Count > 0)
             throw new ValidationException(errors);

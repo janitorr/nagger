@@ -21,18 +21,30 @@ public sealed class ApiTests
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var create = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Pay rent", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "once" });
+        var create = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "once" });
 
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
         using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         Assert.Equal(1, created.RootElement.GetProperty("id").GetInt64());
         Assert.Equal("one-shot", created.RootElement.GetProperty("type").GetString());
+        Assert.Equal("2026-08-04T09:00:00+03:00", created.RootElement.GetProperty("dueAt").GetString());
+        Assert.Equal("once", created.RootElement.GetProperty("reminderPolicy").GetString());
+        Assert.NotEqual(JsonValueKind.Null, created.RootElement.GetProperty("createdAt").ValueKind);
+        Assert.NotEqual(JsonValueKind.Null, created.RootElement.GetProperty("updatedAt").ValueKind);
+        Assert.Equal(JsonValueKind.Null, created.RootElement.GetProperty("completedAt").ValueKind);
+        Assert.Equal(JsonValueKind.Null, created.RootElement.GetProperty("cancelledAt").ValueKind);
 
         var report = await client.GetAsync("/reports/morning?date=2026-08-04");
         Assert.Equal(HttpStatusCode.OK, report.StatusCode);
         using var body = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
-        Assert.Equal("1", body.RootElement.GetProperty("schema_version").GetString());
-        Assert.Equal(1, body.RootElement.GetProperty("summary").GetProperty("due_today").GetInt32());
+        Assert.Equal("1", body.RootElement.GetProperty("schemaVersion").GetString());
+        Assert.NotEqual(JsonValueKind.Null, body.RootElement.GetProperty("generatedAt").ValueKind);
+        Assert.Equal(1, body.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32());
+        var item = body.RootElement.GetProperty("items")[0];
+        Assert.Equal("2026-08-04T09:00:00+03:00", item.GetProperty("dueAt").GetString());
+        Assert.Equal("due_today", item.GetProperty("dueState").GetString());
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("daysOverdue").ValueKind);
+        Assert.Equal("once", item.GetProperty("reminderPolicy").GetString());
 
         using var scope = factory.Services.CreateScope();
         var persisted = await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync();
@@ -46,11 +58,13 @@ public sealed class ApiTests
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "", due_at = "not-a-date", reminder_policy = "daily" });
+        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "", dueAt = "not-a-date", reminderPolicy = "daily" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("title", out _));
+        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("dueAt", out _));
+        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("reminderPolicy", out _));
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/reports/morning")).StatusCode);
     }
 
@@ -59,7 +73,7 @@ public sealed class ApiTests
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Future", due_at = "2026-08-05T09:00:00+03:00", reminder_policy = "none" });
+        await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Future", dueAt = "2026-08-05T09:00:00+03:00", reminderPolicy = "none" });
 
         var first = await client.GetStringAsync("/reports/morning?date=2026-08-04");
         var second = await client.GetStringAsync("/reports/morning?date=2026-08-04");
@@ -78,7 +92,7 @@ public sealed class ApiTests
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
         using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
         var id = createdBody.RootElement.GetProperty("id").GetInt64();
 
@@ -89,11 +103,11 @@ public sealed class ApiTests
         Assert.Equal(status, body.RootElement.GetProperty("status").GetString());
         if (status == "paused")
         {
-            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("completed_at").ValueKind);
-            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("cancelled_at").ValueKind);
+            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("completedAt").ValueKind);
+            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("cancelledAt").ValueKind);
         }
         else
-            Assert.NotEqual(JsonValueKind.Null, body.RootElement.GetProperty(status == "done" ? "completed_at" : "cancelled_at").ValueKind);
+            Assert.NotEqual(JsonValueKind.Null, body.RootElement.GetProperty(status == "done" ? "completedAt" : "cancelledAt").ValueKind);
     }
 
     [Fact]
@@ -101,7 +115,7 @@ public sealed class ApiTests
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
         using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
         var id = createdBody.RootElement.GetProperty("id").GetInt64();
         await client.PostAsync($"/tasks/{id}/pause", null);
@@ -111,8 +125,8 @@ public sealed class ApiTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("active", body.RootElement.GetProperty("status").GetString());
-        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("completed_at").ValueKind);
-        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("cancelled_at").ValueKind);
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("completedAt").ValueKind);
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("cancelledAt").ValueKind);
     }
 
     [Fact]
@@ -129,7 +143,7 @@ public sealed class ApiTests
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
         using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
         var id = createdBody.RootElement.GetProperty("id").GetInt64();
         await client.PostAsync($"/tasks/{id}/pause", null);
@@ -149,7 +163,7 @@ public sealed class ApiTests
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
         using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
         var id = createdBody.RootElement.GetProperty("id").GetInt64();
         await client.PostAsync($"/tasks/{id}/{action}", null);
@@ -157,7 +171,7 @@ public sealed class ApiTests
         var report = await client.GetAsync("/reports/morning?date=2026-08-04");
 
         using var body = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
-        Assert.Equal(0, body.RootElement.GetProperty("summary").GetProperty("due_today").GetInt32());
+        Assert.Equal(0, body.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32());
         Assert.Equal(0, body.RootElement.GetProperty("items").GetArrayLength());
     }
 
@@ -171,10 +185,27 @@ public sealed class ApiTests
         });
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Secret task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Secret task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.DoesNotContain("storage failure", await response.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateOneShotTask_GivenSnakeCaseScheduleFields_WhenCreateRequested_ThenRejectsFields()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "once" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var errors = body.RootElement.GetProperty("errors");
+        Assert.True(errors.TryGetProperty("dueAt", out _));
+        Assert.True(errors.TryGetProperty("reminderPolicy", out _));
+        Assert.False(errors.TryGetProperty("due_at", out _));
+        Assert.False(errors.TryGetProperty("reminder_policy", out _));
     }
 
     [Fact]
