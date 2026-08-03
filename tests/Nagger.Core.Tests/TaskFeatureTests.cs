@@ -36,6 +36,20 @@ public sealed class TaskFeatureTests
         Assert.Empty(store.Tasks);
     }
 
+    [Theory]
+    [InlineData("08/04/2026 09:00:00+03:00")]
+    [InlineData("2026-08-04 09:00:00+03:00")]
+    public async Task CreateTask_GivenNonIsoDueTimestamp_WhenCreateRequested_ThenRejectsTask(string dueAt)
+    {
+        var store = new MemoryStore();
+        var handler = new CreateOneShotTaskHandler(store, new TestClock());
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(async () => await handler.Handle(new("Task", dueAt, "once"), default));
+
+        Assert.Contains("due_at", exception.Errors.Keys);
+        Assert.Empty(store.Tasks);
+    }
+
     [Fact]
     public async Task Classifies_dates_and_leaves_store_unchanged()
     {
@@ -105,8 +119,21 @@ public sealed class TaskFeatureTests
 
         Assert.Equal(expected, task.Status);
         Assert.Equal(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero), task.UpdatedAt);
-        Assert.Equal(expected == OneShotTaskStatus.Done, task.CompletedAt is not null);
-        Assert.Equal(expected == OneShotTaskStatus.Cancelled, task.CancelledAt is not null);
+        if (expected == OneShotTaskStatus.Done)
+        {
+            Assert.Equal(task.UpdatedAt, task.CompletedAt);
+            Assert.Null(task.CancelledAt);
+        }
+        else if (expected == OneShotTaskStatus.Cancelled)
+        {
+            Assert.Null(task.CompletedAt);
+            Assert.Equal(task.UpdatedAt, task.CancelledAt);
+        }
+        else
+        {
+            Assert.Null(task.CompletedAt);
+            Assert.Null(task.CancelledAt);
+        }
     }
 
     [Fact]
