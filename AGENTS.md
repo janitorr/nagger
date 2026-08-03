@@ -5,6 +5,7 @@
 - Requires the .NET 10 SDK. Build the whole solution with `dotnet build Nagger.slnx`; run all tests with `dotnet test Nagger.slnx`.
 - Run a focused test project with `dotnet test tests/Nagger.Core.Tests/Nagger.Core.Tests.csproj` or `dotnet test tests/Nagger.Host.Tests/Nagger.Host.Tests.csproj`. Both test projects use xUnit; host tests create and remove their own temporary SQLite database.
 - Start the API with `dotnet run --project src/Nagger.Host`. The launch profile uses `http://localhost:5246`; without one, the host defaults to `http://127.0.0.1:5000`.
+- Refer to [USAGE.md](USAGE.md) for the API endpoints, JSON payloads, state transitions, report semantics, and error responses.
 
 ## Testing
 
