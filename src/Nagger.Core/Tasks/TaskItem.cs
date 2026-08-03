@@ -12,34 +12,47 @@ public sealed record TaskItem(
     DateTimeOffset? CompletedAt = null,
     DateTimeOffset? CancelledAt = null)
 {
-    public TaskItem Complete(DateTimeOffset now) => TransitionTo(OneShotTaskStatus.Done, now);
-
-    public TaskItem Pause(DateTimeOffset now) => TransitionTo(OneShotTaskStatus.Paused, now);
-
-    public TaskItem Resume(DateTimeOffset now) => TransitionTo(OneShotTaskStatus.Active, now);
-
-    public TaskItem Cancel(DateTimeOffset now) => TransitionTo(OneShotTaskStatus.Cancelled, now);
-
-    private TaskItem TransitionTo(OneShotTaskStatus target, DateTimeOffset now)
+    public TaskItem Complete(DateTimeOffset now)
     {
-        if (!IsAllowed(Status, target))
-            throw new ValidationException(new Dictionary<string, string[]> { ["status"] = [$"Cannot transition a {Status.ToContractValue()} task to {target.ToContractValue()}."] });
+        if (Status != OneShotTaskStatus.Active)
+            throw new ValidationException(new Dictionary<string, string[]> { ["status"] = [$"Cannot complete a {Status.ToContractValue()} task."] });
 
         return this with
         {
-            Status = target,
+            Status = OneShotTaskStatus.Done,
             UpdatedAt = now,
-            CompletedAt = target == OneShotTaskStatus.Done ? now : CompletedAt,
-            CancelledAt = target == OneShotTaskStatus.Cancelled ? now : CancelledAt
+            CompletedAt = now
         };
     }
 
-    private static bool IsAllowed(OneShotTaskStatus current, OneShotTaskStatus target) => (current, target) switch
+    public TaskItem Pause(DateTimeOffset now)
     {
-        (OneShotTaskStatus.Active, OneShotTaskStatus.Paused or OneShotTaskStatus.Done or OneShotTaskStatus.Cancelled) => true,
-        (OneShotTaskStatus.Paused, OneShotTaskStatus.Active or OneShotTaskStatus.Cancelled) => true,
-        _ => false
-    };
+        if (Status != OneShotTaskStatus.Active)
+            throw new ValidationException(new Dictionary<string, string[]> { ["status"] = [$"Cannot pause a {Status.ToContractValue()} task."] });
+
+        return this with { Status = OneShotTaskStatus.Paused, UpdatedAt = now };
+    }
+
+    public TaskItem Resume(DateTimeOffset now)
+    {
+        if (Status != OneShotTaskStatus.Paused)
+            throw new ValidationException(new Dictionary<string, string[]> { ["status"] = [$"Cannot resume a {Status.ToContractValue()} task."] });
+
+        return this with { Status = OneShotTaskStatus.Active, UpdatedAt = now };
+    }
+
+    public TaskItem Cancel(DateTimeOffset now)
+    {
+        if (Status is not (OneShotTaskStatus.Active or OneShotTaskStatus.Paused))
+            throw new ValidationException(new Dictionary<string, string[]> { ["status"] = [$"Cannot cancel a {Status.ToContractValue()} task."] });
+
+        return this with
+        {
+            Status = OneShotTaskStatus.Cancelled,
+            UpdatedAt = now,
+            CancelledAt = now
+        };
+    }
 }
 
 public enum OneShotTaskStatus
