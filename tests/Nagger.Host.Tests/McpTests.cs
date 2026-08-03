@@ -10,96 +10,220 @@ namespace Nagger.Host.Tests;
 public sealed class McpTests
 {
     [Fact]
-    public async Task Mcp_GivenInitializedSession_WhenTaskToolsAreCalled_ThenReturnsStructuredResults()
+    public async Task Mcp_GivenNewClient_WhenInitialized_ThenNegotiatesProtocolVersion()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var session = await InitializeMcpAsync(client);
+
+        session.ProtocolVersion.ShouldBe("2025-11-25");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenInitializedSession_WhenToolsListed_ThenAdvertisesTaskTools()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
 
-        var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
+        using var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
         var names = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
             .Select(tool => tool.GetProperty("name").GetString()).ToList();
+
         names.ShouldContain("create_one_shot_task");
         names.ShouldContain("complete_one_shot_task");
         names.ShouldContain("pause_one_shot_task");
         names.ShouldContain("resume_one_shot_task");
         names.ShouldContain("cancel_one_shot_task");
         names.ShouldContain("get_morning_report");
-
-        var createTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
-            .Single(tool => tool.GetProperty("name").GetString() == "create_one_shot_task");
-        createTool.GetProperty("description").GetString()!.ShouldContain("single task", Case.Insensitive);
-        var requiredCreateFields = createTool.GetProperty("inputSchema").GetProperty("required").EnumerateArray()
-            .Select(field => field.GetString()).ToList();
-        requiredCreateFields.ShouldContain("title");
-        requiredCreateFields.ShouldContain("dueAt");
-        requiredCreateFields.ShouldContain("reminderPolicy");
-
-        var pauseTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
-            .Single(tool => tool.GetProperty("name").GetString() == "pause_one_shot_task");
-        pauseTool.GetProperty("description").GetString()!.ShouldContain("temporarily", Case.Insensitive);
-
-        var create = await SendMcpAsync(client, session, 3, "tools/call", new
-        {
-            name = "create_one_shot_task",
-            arguments = new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "once" }
-        });
-        var created = create.RootElement.GetProperty("result").GetProperty("structuredContent");
-        var id = created.GetProperty("id").GetInt64();
-        created.GetProperty("status").GetString().ShouldBe("active");
-
-        var pause = await SendMcpAsync(client, session, 4, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
-        pause.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString().ShouldBe("paused");
-        var resume = await SendMcpAsync(client, session, 5, "tools/call", new { name = "resume_one_shot_task", arguments = new { id } });
-        resume.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString().ShouldBe("active");
-        var complete = await SendMcpAsync(client, session, 6, "tools/call", new { name = "complete_one_shot_task", arguments = new { id } });
-        complete.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString().ShouldBe("done");
-
-        var secondCreate = await SendMcpAsync(client, session, 7, "tools/call", new
-        {
-            name = "create_one_shot_task",
-            arguments = new { title = "Cancel me", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" }
-        });
-        var secondId = secondCreate.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
-        var cancel = await SendMcpAsync(client, session, 8, "tools/call", new { name = "cancel_one_shot_task", arguments = new { id = secondId } });
-        cancel.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("status").GetString().ShouldBe("cancelled");
-
-        var report = await SendMcpAsync(client, session, 9, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
-        report.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("schemaVersion").GetString().ShouldBe("1");
-        report.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(0);
     }
 
     [Fact]
-    public async Task Mcp_GivenInvalidInputOrTransition_WhenToolCalled_ThenReturnsErrorsWithoutUnexpectedWrites()
+    public async Task Mcp_GivenInitializedSession_WhenCreateToolListed_ThenDescribesRequiredTaskFields()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
 
-        var invalidCreate = await SendMcpAsync(client, session, 2, "tools/call", new
+        using var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
+        var createTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Single(tool => tool.GetProperty("name").GetString() == "create_one_shot_task");
+        var requiredFields = createTool.GetProperty("inputSchema").GetProperty("required").EnumerateArray()
+            .Select(field => field.GetString()).ToList();
+
+        createTool.GetProperty("description").GetString()!.ShouldContain("single task", Case.Insensitive);
+        requiredFields.ShouldContain("title");
+        requiredFields.ShouldContain("dueAt");
+        requiredFields.ShouldContain("reminderPolicy");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenInitializedSession_WhenPauseToolListed_ThenDescribesTemporaryPause()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
+        var pauseTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Single(tool => tool.GetProperty("name").GetString() == "pause_one_shot_task");
+
+        pauseTool.GetProperty("description").GetString()!.ShouldContain("temporarily", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenValidTaskInput_WhenCreateRequested_ThenReturnsActiveTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
+        {
+            name = "create_one_shot_task",
+            arguments = new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "once" }
+        });
+        var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        task.GetProperty("id").GetInt64().ShouldBe(1);
+        task.GetProperty("status").GetString().ShouldBe("active");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenActiveTask_WhenPauseRequested_ThenReturnsPausedTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var id = await CreateTaskAsync(client, session);
+
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
+        var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        task.GetProperty("status").GetString().ShouldBe("paused");
+        task.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        task.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenPausedTask_WhenResumeRequested_ThenReturnsActiveTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var id = await CreateTaskAsync(client, session);
+        using var paused = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
+
+        using var response = await SendMcpAsync(client, session, 4, "tools/call", new { name = "resume_one_shot_task", arguments = new { id } });
+        var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        task.GetProperty("status").GetString().ShouldBe("active");
+        task.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        task.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenActiveTask_WhenCompleteRequested_ThenReturnsDoneTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var id = await CreateTaskAsync(client, session);
+
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "complete_one_shot_task", arguments = new { id } });
+        var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        task.GetProperty("status").GetString().ShouldBe("done");
+        task.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        task.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenActiveTask_WhenCancelRequested_ThenReturnsCancelledTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var id = await CreateTaskAsync(client, session);
+
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "cancel_one_shot_task", arguments = new { id } });
+        var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        task.GetProperty("status").GetString().ShouldBe("cancelled");
+        task.GetProperty("completedAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        task.GetProperty("cancelledAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenTaskDueToday_WhenMorningReportRequested_ThenReturnsDueTaskSummary()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await CreateTaskAsync(client, session);
+
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
+        var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        report.GetProperty("schemaVersion").GetString().ShouldBe("1");
+        report.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenInvalidTaskInput_WhenCreateRequested_ThenReturnsErrorWithoutPersistingTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
         {
             name = "create_one_shot_task",
             arguments = new { title = "", dueAt = "not-a-date", reminderPolicy = "daily" }
         });
-        invalidCreate.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
 
-        var unknown = await SendMcpAsync(client, session, 3, "tools/call", new { name = "complete_one_shot_task", arguments = new { id = 42 } });
-        unknown.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()).ShouldBe(0);
+    }
 
-        var create = await SendMcpAsync(client, session, 4, "tools/call", new
+    [Fact]
+    public async Task Mcp_GivenMissingTask_WhenCompleteRequested_ThenReturnsError()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(client, session, 2, "tools/call", new { name = "complete_one_shot_task", arguments = new { id = 42 } });
+
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Mcp_GivenPausedTask_WhenCompleteRequested_ThenReturnsErrorWithoutChangingTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var id = await CreateTaskAsync(client, session);
+        using var paused = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
+
+        using var response = await SendMcpAsync(client, session, 4, "tools/call", new { name = "complete_one_shot_task", arguments = new { id } });
+
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()).Status.ShouldBe("paused");
+    }
+
+    private static async Task<long> CreateTaskAsync(HttpClient client, McpSession session)
+    {
+        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
         {
             name = "create_one_shot_task",
             arguments = new { title = "Task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" }
         });
-        var id = create.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
-        await SendMcpAsync(client, session, 5, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
-
-        var invalidTransition = await SendMcpAsync(client, session, 6, "tools/call", new { name = "complete_one_shot_task", arguments = new { id } });
-        invalidTransition.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
-
-        using var scope = factory.Services.CreateScope();
-        var persisted = await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync();
-        persisted.Status.ShouldBe("paused");
+        return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
     }
 
     private static async Task<McpSession> InitializeMcpAsync(HttpClient client)
@@ -113,8 +237,7 @@ public sealed class McpTests
         });
         using var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
-        var responseBody = await response.Content.ReadAsStringAsync();
-        using var body = ParseMcpResponse(responseBody);
+        using var body = ParseMcpResponse(await response.Content.ReadAsStringAsync());
         response.Headers.TryGetValues("Mcp-Session-Id", out var sessionIds);
         return new McpSession(sessionIds?.SingleOrDefault(), body.RootElement.GetProperty("result").GetProperty("protocolVersion").GetString()!);
     }
