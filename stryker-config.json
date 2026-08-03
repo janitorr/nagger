@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.CLI/stryker-schema.json",
+  "stryker-config": {
+    "project": "src/Nagger.Core/Nagger.Core.csproj",
+    "test-projects": [
+      "tests/Nagger.Core.Tests/Nagger.Core.Tests.csproj"
+    ],
+    "reporters": [
+      "Progress",
+      "Html"
+    ],
+    "thresholds": {
+      "high": 80,
+      "low": 75,
+      "break": 75
+    }
+  }
+}

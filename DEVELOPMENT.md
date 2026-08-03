@@ -54,6 +54,17 @@ dotnet test tests/Nagger.Host.Tests/Nagger.Host.Tests.csproj
 
 Host integration tests use temporary SQLite databases and do not require a running service.
 
+## Mutation Testing
+
+Run mutation testing for Core behavior and its focused test suite:
+
+```bash
+dotnet tool restore
+dotnet stryker --config-file stryker-config.json --output StrykerOutput
+```
+
+The command fails when the mutation score drops below 75%. Its HTML report is written to `StrykerOutput/reports/`.
+
 ## Architecture
 
 `src/Nagger.Core` contains task behavior, vertical feature slices, and the persistence/time ports it requires. It does not depend on ASP.NET Core, EF Core, configuration, or the system clock.
