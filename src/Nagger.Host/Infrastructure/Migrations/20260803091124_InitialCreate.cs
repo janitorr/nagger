@@ -22,7 +22,10 @@ namespace Nagger.Host.Infrastructure.Migrations
                     ReminderPolicy = table.Column<string>(type: "TEXT", nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    LastReminderAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true)
+                    LastReminderAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
+                    Status = table.Column<string>(type: "TEXT", nullable: false),
+                    CompletedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
+                    CancelledAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {

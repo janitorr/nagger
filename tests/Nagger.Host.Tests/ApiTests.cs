@@ -35,7 +35,10 @@ public sealed class ApiTests
         Assert.Equal(1, body.RootElement.GetProperty("summary").GetProperty("due_today").GetInt32());
 
         using var scope = factory.Services.CreateScope();
-        Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync());
+        var persisted = await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync();
+        Assert.Equal("active", persisted.Status);
+        Assert.Null(persisted.CompletedAt);
+        Assert.Null(persisted.CancelledAt);
     }
 
     [Fact]
@@ -65,6 +68,97 @@ public sealed class ApiTests
         Assert.Equal(1, firstBody.RootElement.GetProperty("summary").GetProperty("upcoming").GetInt32());
         Assert.Equal(0, firstBody.RootElement.GetProperty("items").GetArrayLength());
         Assert.Equal(firstBody.RootElement.GetProperty("items").GetArrayLength(), secondBody.RootElement.GetProperty("items").GetArrayLength());
+    }
+
+    [Theory]
+    [InlineData("complete", "done")]
+    [InlineData("pause", "paused")]
+    [InlineData("cancel", "cancelled")]
+    public async Task Lifecycle_GivenActiveTask_WhenPosted_ThenReturnsUpdatedTask(string action, string status)
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var id = createdBody.RootElement.GetProperty("id").GetInt64();
+
+        var response = await client.PostAsync($"/tasks/{id}/{action}", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(status, body.RootElement.GetProperty("status").GetString());
+        if (status == "paused")
+        {
+            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("completed_at").ValueKind);
+            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("cancelled_at").ValueKind);
+        }
+        else
+            Assert.NotEqual(JsonValueKind.Null, body.RootElement.GetProperty(status == "done" ? "completed_at" : "cancelled_at").ValueKind);
+    }
+
+    [Fact]
+    public async Task Resume_GivenPausedTask_WhenPosted_ThenReturnsActiveTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var id = createdBody.RootElement.GetProperty("id").GetInt64();
+        await client.PostAsync($"/tasks/{id}/pause", null);
+
+        var response = await client.PostAsync($"/tasks/{id}/resume", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("active", body.RootElement.GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("completed_at").ValueKind);
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("cancelled_at").ValueKind);
+    }
+
+    [Fact]
+    public async Task Lifecycle_GivenMissingTask_WhenPosted_ThenReturnsNotFound()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/tasks/42/complete", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Complete_GivenPausedTask_WhenPosted_ThenReturnsValidationError()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var id = createdBody.RootElement.GetProperty("id").GetInt64();
+        await client.PostAsync($"/tasks/{id}/pause", null);
+
+        var response = await client.PostAsync($"/tasks/{id}/complete", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("status", out _));
+    }
+
+    [Theory]
+    [InlineData("pause")]
+    [InlineData("complete")]
+    [InlineData("cancel")]
+    public async Task Report_GivenInactiveTask_WhenRead_ThenExcludesTask(string action)
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var created = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "none" });
+        using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var id = createdBody.RootElement.GetProperty("id").GetInt64();
+        await client.PostAsync($"/tasks/{id}/{action}", null);
+
+        var report = await client.GetAsync("/reports/morning?date=2026-08-04");
+
+        using var body = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
+        Assert.Equal(0, body.RootElement.GetProperty("summary").GetProperty("due_today").GetInt32());
+        Assert.Equal(0, body.RootElement.GetProperty("items").GetArrayLength());
     }
 
     [Fact]
@@ -127,6 +221,8 @@ public sealed class NaggerFactory : WebApplicationFactory<Program>
 public sealed class ThrowingStore : ITaskStore
 {
     public ValueTask<TaskItem> AddAsync(TaskItem task, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure containing task title");
+    public ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
+    public ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
     public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
 }
 

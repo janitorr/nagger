@@ -26,6 +26,12 @@ namespace Nagger.Host.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset>("DueAt")
                         .HasColumnType("TEXT");
 
@@ -33,6 +39,10 @@ namespace Nagger.Host.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ReminderPolicy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
