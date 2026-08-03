@@ -239,6 +239,19 @@ public sealed class ApiTests
         Assert.Contains("cancel_one_shot_task", names);
         Assert.Contains("get_morning_report", names);
 
+        var createTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Single(tool => tool.GetProperty("name").GetString() == "create_one_shot_task");
+        Assert.Contains("single task", createTool.GetProperty("description").GetString(), StringComparison.OrdinalIgnoreCase);
+        var requiredCreateFields = createTool.GetProperty("inputSchema").GetProperty("required").EnumerateArray()
+            .Select(field => field.GetString()).ToList();
+        Assert.Contains("title", requiredCreateFields);
+        Assert.Contains("dueAt", requiredCreateFields);
+        Assert.Contains("reminderPolicy", requiredCreateFields);
+
+        var pauseTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Single(tool => tool.GetProperty("name").GetString() == "pause_one_shot_task");
+        Assert.Contains("temporarily", pauseTool.GetProperty("description").GetString(), StringComparison.OrdinalIgnoreCase);
+
         var create = await SendMcpAsync(client, session, 3, "tools/call", new
         {
             name = "create_one_shot_task",

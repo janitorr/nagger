@@ -4,6 +4,7 @@ using Mediator;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Nagger.Core.Tasks;
+using RequiredAttribute = System.ComponentModel.DataAnnotations.RequiredAttribute;
 
 namespace Nagger.Host.Mcp;
 
@@ -12,37 +13,37 @@ public sealed class McpTaskTools(IMediator mediator)
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [McpServerTool(Name = "create_one_shot_task", UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse))]
-    [Description("Create a one-shot task with a title, offset-qualified due timestamp, and reminder policy.")]
+    [Description("Use when the user asks to remember a single task at a specific time. Creates a non-recurring one-shot task; do not use for recurring reminders.")]
     public Task<CallToolResult> CreateOneShotTask(
-        [Description("Nonempty task title.")] string? title,
-        [Description("ISO-8601 due timestamp with an explicit UTC offset.")] string? dueAt,
-        [Description("One of none, once, or weekly-until-done.")] string? reminderPolicy,
+        [RequiredAttribute, Description("Required nonempty task title.")] string? title,
+        [RequiredAttribute, Description("Required ISO-8601 due timestamp with an explicit UTC offset, for example 2026-08-04T09:00:00+03:00.")] string? dueAt,
+        [RequiredAttribute, Description("Required reminder policy: none, once, or weekly-until-done.")] string? reminderPolicy,
         CancellationToken cancellationToken) =>
         Run(async () => McpTaskResponse.From(await mediator.Send(new CreateOneShotTaskCommand(title, dueAt, reminderPolicy), cancellationToken)));
 
     [McpServerTool(Name = "complete_one_shot_task", UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse))]
-    [Description("Mark an active one-shot task as done.")]
-    public Task<CallToolResult> CompleteOneShotTask([Description("Task identifier.")] long id, CancellationToken cancellationToken) =>
+    [Description("Use only when the user says an active one-shot task is finished. Changes it to done; it cannot be resumed.")]
+    public Task<CallToolResult> CompleteOneShotTask([Description("Identifier returned by create_one_shot_task or get_morning_report.")] long id, CancellationToken cancellationToken) =>
         Run(async () => McpTaskResponse.From(await mediator.Send(new CompleteOneShotTaskCommand(id), cancellationToken)));
 
     [McpServerTool(Name = "pause_one_shot_task", UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse))]
-    [Description("Pause an active one-shot task.")]
-    public Task<CallToolResult> PauseOneShotTask([Description("Task identifier.")] long id, CancellationToken cancellationToken) =>
+    [Description("Use when the user wants to temporarily stop an active one-shot task without finishing or cancelling it. The task can later be resumed.")]
+    public Task<CallToolResult> PauseOneShotTask([Description("Identifier returned by create_one_shot_task or get_morning_report.")] long id, CancellationToken cancellationToken) =>
         Run(async () => McpTaskResponse.From(await mediator.Send(new PauseOneShotTaskCommand(id), cancellationToken)));
 
     [McpServerTool(Name = "resume_one_shot_task", UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse))]
-    [Description("Resume a paused one-shot task.")]
-    public Task<CallToolResult> ResumeOneShotTask([Description("Task identifier.")] long id, CancellationToken cancellationToken) =>
+    [Description("Use only to reactivate a paused one-shot task. It changes the task back to active.")]
+    public Task<CallToolResult> ResumeOneShotTask([Description("Identifier returned by create_one_shot_task or get_morning_report.")] long id, CancellationToken cancellationToken) =>
         Run(async () => McpTaskResponse.From(await mediator.Send(new ResumeOneShotTaskCommand(id), cancellationToken)));
 
     [McpServerTool(Name = "cancel_one_shot_task", UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse))]
-    [Description("Cancel an active or paused one-shot task.")]
-    public Task<CallToolResult> CancelOneShotTask([Description("Task identifier.")] long id, CancellationToken cancellationToken) =>
+    [Description("Use when the user no longer wants an active or paused one-shot task. Permanently cancels it; it cannot be resumed.")]
+    public Task<CallToolResult> CancelOneShotTask([Description("Identifier returned by create_one_shot_task or get_morning_report.")] long id, CancellationToken cancellationToken) =>
         Run(async () => McpTaskResponse.From(await mediator.Send(new CancelOneShotTaskCommand(id), cancellationToken)));
 
     [McpServerTool(Name = "get_morning_report", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpMorningReportResponse))]
-    [Description("Get the read-only morning report for a date in the configured timezone.")]
-    public Task<CallToolResult> GetMorningReport([Description("Report date in YYYY-MM-DD format.")] string? date, CancellationToken cancellationToken) =>
+    [Description("Use to review active one-shot tasks for a specific date in the configured timezone. Returns due-today, overdue, and upcoming counts without changing task state.")]
+    public Task<CallToolResult> GetMorningReport([RequiredAttribute, Description("Required report date in YYYY-MM-DD format, interpreted in the configured timezone.")] string? date, CancellationToken cancellationToken) =>
         Run(async () => McpMorningReportResponse.From(await mediator.Send(new MorningReportQuery(date), cancellationToken)));
 
     private static async Task<CallToolResult> Run<T>(Func<Task<T>> action)
