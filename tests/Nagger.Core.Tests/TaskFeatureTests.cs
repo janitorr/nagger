@@ -66,6 +66,20 @@ public sealed class TaskFeatureTests
     }
 
     [Theory]
+    [InlineData(OneShotTaskStatus.Paused)]
+    [InlineData(OneShotTaskStatus.Done)]
+    [InlineData(OneShotTaskStatus.Cancelled)]
+    public async Task MorningReport_GivenInactiveTask_WhenHandled_ThenExcludesTask(OneShotTaskStatus status)
+    {
+        var store = new MemoryStore(new TaskItem(1, "Inactive", new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero), ReminderPolicy.None, default, default, Status: status));
+
+        var report = await new MorningReportHandler(store, new TestClock(TimeZoneInfo.Utc)).Handle(new("2026-08-04"), default);
+
+        Assert.Equal(new MorningReportSummary(0, 0, 0), report.Summary);
+        Assert.Empty(report.Items);
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("2026/08/04")]
     [InlineData("2026-8-4")]
@@ -75,6 +89,59 @@ public sealed class TaskFeatureTests
         var exception = await Assert.ThrowsAsync<ValidationException>(async () => await handler.Handle(new(date), default));
         Assert.Contains("date", exception.Errors.Keys);
     }
+
+    [Theory]
+    [InlineData(OneShotTaskStatus.Active, OneShotTaskStatus.Done)]
+    [InlineData(OneShotTaskStatus.Active, OneShotTaskStatus.Paused)]
+    [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Active)]
+    [InlineData(OneShotTaskStatus.Active, OneShotTaskStatus.Cancelled)]
+    [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Cancelled)]
+    public async Task Transition_GivenAllowedStatus_WhenHandled_ThenUpdatesTask(OneShotTaskStatus initial, OneShotTaskStatus expected)
+    {
+        var store = new MemoryStore(new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial));
+        var handler = HandlerFor(expected, store);
+
+        var task = await handler();
+
+        Assert.Equal(expected, task.Status);
+        Assert.Equal(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero), task.UpdatedAt);
+        Assert.Equal(expected == OneShotTaskStatus.Done, task.CompletedAt is not null);
+        Assert.Equal(expected == OneShotTaskStatus.Cancelled, task.CancelledAt is not null);
+    }
+
+    [Fact]
+    public async Task Transition_GivenMissingTask_WhenHandled_ThenThrowsNotFound()
+    {
+        var handler = new CompleteOneShotTaskHandler(new MemoryStore(), new TestClock());
+
+        await Assert.ThrowsAsync<TaskNotFoundException>(async () => await handler.Handle(new(42), default));
+    }
+
+    [Theory]
+    [InlineData(OneShotTaskStatus.Active, OneShotTaskStatus.Active)]
+    [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Done)]
+    [InlineData(OneShotTaskStatus.Done, OneShotTaskStatus.Active)]
+    [InlineData(OneShotTaskStatus.Cancelled, OneShotTaskStatus.Paused)]
+    public async Task Transition_GivenInvalidOrTerminalStatus_WhenHandled_ThenRejectsWithoutWrite(OneShotTaskStatus initial, OneShotTaskStatus target)
+    {
+        var original = new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial);
+        var store = new MemoryStore(original);
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(async () => await HandlerFor(target, store)());
+
+        Assert.Contains("status", exception.Errors.Keys);
+        Assert.Equal(original, store.Tasks.Single());
+        Assert.Equal(0, store.Updates);
+    }
+
+    private static Func<ValueTask<TaskItem>> HandlerFor(OneShotTaskStatus target, MemoryStore store) => target switch
+    {
+        OneShotTaskStatus.Done => () => new CompleteOneShotTaskHandler(store, new TestClock()).Handle(new(1), default),
+        OneShotTaskStatus.Paused => () => new PauseOneShotTaskHandler(store, new TestClock()).Handle(new(1), default),
+        OneShotTaskStatus.Active => () => new ResumeOneShotTaskHandler(store, new TestClock()).Handle(new(1), default),
+        OneShotTaskStatus.Cancelled => () => new CancelOneShotTaskHandler(store, new TestClock()).Handle(new(1), default),
+        _ => throw new ArgumentOutOfRangeException(nameof(target))
+    };
 
     private sealed class TestClock(TimeZoneInfo? timezone = null) : IClock
     {
@@ -86,6 +153,7 @@ public sealed class TaskFeatureTests
     {
         public List<TaskItem> Tasks { get; } = [.. tasks];
         public int Reads { get; private set; }
+        public int Updates { get; private set; }
         public ValueTask<TaskItem> AddAsync(TaskItem task, CancellationToken cancellationToken)
         {
             task = task with { Id = Tasks.Count + 1 };
@@ -95,7 +163,14 @@ public sealed class TaskFeatureTests
         public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken)
         {
             Reads++;
-            return ValueTask.FromResult<IReadOnlyList<TaskItem>>(Tasks);
+            return ValueTask.FromResult<IReadOnlyList<TaskItem>>(Tasks.Where(x => x.Status == OneShotTaskStatus.Active).ToList());
+        }
+        public ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken) => ValueTask.FromResult(Tasks.SingleOrDefault(x => x.Id == id));
+        public ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken)
+        {
+            Tasks[Tasks.FindIndex(x => x.Id == task.Id)] = task;
+            Updates++;
+            return ValueTask.CompletedTask;
         }
     }
 }

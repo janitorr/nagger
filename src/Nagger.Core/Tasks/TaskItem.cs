@@ -7,7 +7,18 @@ public sealed record TaskItem(
     ReminderPolicy ReminderPolicy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? LastReminderAt = null);
+    DateTimeOffset? LastReminderAt = null,
+    OneShotTaskStatus Status = OneShotTaskStatus.Active,
+    DateTimeOffset? CompletedAt = null,
+    DateTimeOffset? CancelledAt = null);
+
+public enum OneShotTaskStatus
+{
+    Active,
+    Paused,
+    Done,
+    Cancelled
+}
 
 public enum ReminderPolicy
 {
@@ -39,4 +50,25 @@ public static class ReminderPolicies
         policy = value;
         return success;
     }
+}
+
+public static class OneShotTaskStatuses
+{
+    public static string ToContractValue(this OneShotTaskStatus status) => status switch
+    {
+        OneShotTaskStatus.Active => "active",
+        OneShotTaskStatus.Paused => "paused",
+        OneShotTaskStatus.Done => "done",
+        OneShotTaskStatus.Cancelled => "cancelled",
+        _ => throw new ArgumentOutOfRangeException(nameof(status))
+    };
+
+    public static OneShotTaskStatus FromContractValue(string status) => status switch
+    {
+        "active" => OneShotTaskStatus.Active,
+        "paused" => OneShotTaskStatus.Paused,
+        "done" => OneShotTaskStatus.Done,
+        "cancelled" => OneShotTaskStatus.Cancelled,
+        _ => throw new ArgumentOutOfRangeException(nameof(status))
+    };
 }

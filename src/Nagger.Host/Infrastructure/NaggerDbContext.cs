@@ -14,6 +14,7 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
         task.Property(x => x.Title).IsRequired();
         task.Property(x => x.DueAt).IsRequired();
         task.Property(x => x.ReminderPolicy).IsRequired();
+        task.Property(x => x.Status).IsRequired();
         task.Property(x => x.CreatedAt).IsRequired();
         task.Property(x => x.UpdatedAt).IsRequired();
     }
@@ -28,4 +29,7 @@ public sealed class TaskEntity
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? LastReminderAt { get; set; }
+    public required string Status { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public DateTimeOffset? CancelledAt { get; set; }
 }

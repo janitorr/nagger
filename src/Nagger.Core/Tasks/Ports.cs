@@ -4,6 +4,10 @@ public interface ITaskStore
 {
     ValueTask<TaskItem> AddAsync(TaskItem task, CancellationToken cancellationToken);
 
+    ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken);
+
+    ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken);
+
     ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken);
 }
 
