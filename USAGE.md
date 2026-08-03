@@ -9,6 +9,27 @@ dotnet run --project src/Nagger.Host
 The development launch profile listens on `http://localhost:5246`. Without a
 launch profile, the default address is `http://127.0.0.1:5000`.
 
+## MCP Server
+
+MCP-compatible clients can connect with the streamable-HTTP transport at
+`http://localhost:5246/mcp` when using the development launch profile. The
+endpoint exposes these tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `create_one_shot_task` | Create a one-shot reminder from `title`, `dueAt`, and `reminderPolicy`. |
+| `complete_one_shot_task` | Complete an active reminder by `id`. |
+| `pause_one_shot_task` | Pause an active reminder by `id`. |
+| `resume_one_shot_task` | Resume a paused reminder by `id`. |
+| `cancel_one_shot_task` | Cancel an active or paused reminder by `id`. |
+| `get_morning_report` | Read the morning report for a `YYYY-MM-DD` `date`. |
+
+Tool results contain structured task and report data using the same fields as
+the REST API. Invalid inputs, invalid state transitions, and unknown task IDs
+are returned as MCP tool errors. This endpoint is local-only: it has no
+authentication or authorization and must not be exposed on an untrusted
+network.
+
 All request and response bodies are JSON. Timestamps use ISO-8601 with an
 explicit UTC offset, for example `2026-08-04T09:00:00+03:00`.
 
