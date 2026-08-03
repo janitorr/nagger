@@ -96,7 +96,7 @@ public sealed class TaskFeatureTests
     [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Active)]
     [InlineData(OneShotTaskStatus.Active, OneShotTaskStatus.Cancelled)]
     [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Cancelled)]
-    public async Task Transition_GivenAllowedStatus_WhenHandled_ThenUpdatesTask(OneShotTaskStatus initial, OneShotTaskStatus expected)
+    public async Task Transition_GivenAllowedSourceAndTarget_WhenCommandIsHandled_ThenUpdatesTask(OneShotTaskStatus initial, OneShotTaskStatus expected)
     {
         var store = new MemoryStore(new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial));
         var handler = HandlerFor(expected, store);
@@ -110,7 +110,7 @@ public sealed class TaskFeatureTests
     }
 
     [Fact]
-    public async Task Transition_GivenMissingTask_WhenHandled_ThenThrowsNotFound()
+    public async Task Complete_GivenMissingTask_WhenCommandIsHandled_ThenThrowsNotFound()
     {
         var handler = new CompleteOneShotTaskHandler(new MemoryStore(), new TestClock());
 
@@ -122,7 +122,7 @@ public sealed class TaskFeatureTests
     [InlineData(OneShotTaskStatus.Paused, OneShotTaskStatus.Done)]
     [InlineData(OneShotTaskStatus.Done, OneShotTaskStatus.Active)]
     [InlineData(OneShotTaskStatus.Cancelled, OneShotTaskStatus.Paused)]
-    public async Task Transition_GivenInvalidOrTerminalStatus_WhenHandled_ThenRejectsWithoutWrite(OneShotTaskStatus initial, OneShotTaskStatus target)
+    public async Task Transition_GivenInvalidOrTerminalSourceAndTarget_WhenCommandIsHandled_ThenRejectsWithoutWrite(OneShotTaskStatus initial, OneShotTaskStatus target)
     {
         var original = new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial);
         var store = new MemoryStore(original);
