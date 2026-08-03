@@ -1,4 +1,5 @@
 using Nagger.Core.Tasks;
+using Shouldly;
 
 namespace Nagger.Core.Tests;
 
@@ -12,10 +13,10 @@ public sealed class TaskFeatureTests
 
         var task = await handler.Handle(new("Pay rent", "2026-08-04T09:00:00+03:00", "weekly-until-done"), default);
 
-        Assert.Equal(1, task.Id);
-        Assert.Equal("Pay rent", task.Title);
-        Assert.Equal(ReminderPolicy.WeeklyUntilDone, task.ReminderPolicy);
-        Assert.Equal(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero), task.CreatedAt);
+        task.Id.ShouldBe(1);
+        task.Title.ShouldBe("Pay rent");
+        task.ReminderPolicy.ShouldBe(ReminderPolicy.WeeklyUntilDone);
+        task.CreatedAt.ShouldBe(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero));
     }
 
     [Theory]
@@ -30,10 +31,10 @@ public sealed class TaskFeatureTests
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestClock());
 
-        var exception = await Assert.ThrowsAsync<ValidationException>(async () => await handler.Handle(new(title, dueAt, policy), default));
+        var exception = await Should.ThrowAsync<ValidationException>(async () => await handler.Handle(new(title, dueAt, policy), default));
 
-        Assert.Contains(field, exception.Errors.Keys);
-        Assert.Empty(store.Tasks);
+        exception.Errors.Keys.ShouldContain(field);
+        store.Tasks.ShouldBeEmpty();
     }
 
     [Theory]
@@ -44,10 +45,10 @@ public sealed class TaskFeatureTests
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestClock());
 
-        var exception = await Assert.ThrowsAsync<ValidationException>(async () => await handler.Handle(new("Task", dueAt, "once"), default));
+        var exception = await Should.ThrowAsync<ValidationException>(async () => await handler.Handle(new("Task", dueAt, "once"), default));
 
-        Assert.Contains("dueAt", exception.Errors.Keys);
-        Assert.Empty(store.Tasks);
+        exception.Errors.Keys.ShouldContain("dueAt");
+        store.Tasks.ShouldBeEmpty();
     }
 
     [Fact]
@@ -62,11 +63,11 @@ public sealed class TaskFeatureTests
         var first = await handler.Handle(new("2026-08-04"), default);
         var second = await handler.Handle(new("2026-08-04"), default);
 
-        Assert.Equal(new MorningReportSummary(1, 1, 1), first.Summary);
-        Assert.Equal(2, first.Items.Count);
-        Assert.Equal(3, first.Items.Single(x => x.Id == 2).DaysOverdue);
-        Assert.Equal(first.Items, second.Items);
-        Assert.Equal(2, store.Reads);
+        first.Summary.ShouldBe(new MorningReportSummary(1, 1, 1));
+        first.Items.Count.ShouldBe(2);
+        first.Items.Single(x => x.Id == 2).DaysOverdue.ShouldBe(3);
+        first.Items.ShouldBe(second.Items);
+        store.Reads.ShouldBe(2);
     }
 
     [Fact]
@@ -76,7 +77,7 @@ public sealed class TaskFeatureTests
         var store = new MemoryStore(new TaskItem(1, "Boundary", new DateTimeOffset(2026, 8, 3, 21, 30, 0, TimeSpan.Zero), ReminderPolicy.None, default, default));
         var report = await new MorningReportHandler(store, new TestClock(timezone)).Handle(new("2026-08-04"), default);
 
-        Assert.Equal(1, report.Summary.DueToday);
+        report.Summary.DueToday.ShouldBe(1);
     }
 
     [Fact]
@@ -86,7 +87,7 @@ public sealed class TaskFeatureTests
 
         var report = await new MorningReportHandler(store, new TestClock(TimeZoneInfo.Utc)).Handle(new("2026-08-04"), default);
 
-        Assert.Equal("weekly-until-done", Assert.Single(report.Items).ReminderPolicy);
+        report.Items.ShouldHaveSingleItem().ReminderPolicy.ShouldBe("weekly-until-done");
     }
 
     [Theory]
@@ -99,8 +100,8 @@ public sealed class TaskFeatureTests
 
         var report = await new MorningReportHandler(store, new TestClock(TimeZoneInfo.Utc)).Handle(new("2026-08-04"), default);
 
-        Assert.Equal(new MorningReportSummary(0, 0, 0), report.Summary);
-        Assert.Empty(report.Items);
+        report.Summary.ShouldBe(new MorningReportSummary(0, 0, 0));
+        report.Items.ShouldBeEmpty();
     }
 
     [Theory]
@@ -110,8 +111,8 @@ public sealed class TaskFeatureTests
     public async Task Rejects_invalid_report_date(string? date)
     {
         var handler = new MorningReportHandler(new MemoryStore(), new TestClock());
-        var exception = await Assert.ThrowsAsync<ValidationException>(async () => await handler.Handle(new(date), default));
-        Assert.Contains("date", exception.Errors.Keys);
+        var exception = await Should.ThrowAsync<ValidationException>(async () => await handler.Handle(new(date), default));
+        exception.Errors.Keys.ShouldContain("date");
     }
 
     [Theory]
@@ -127,22 +128,22 @@ public sealed class TaskFeatureTests
 
         var task = await handler();
 
-        Assert.Equal(expected, task.Status);
-        Assert.Equal(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero), task.UpdatedAt);
+        task.Status.ShouldBe(expected);
+        task.UpdatedAt.ShouldBe(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero));
         if (expected == OneShotTaskStatus.Done)
         {
-            Assert.Equal(task.UpdatedAt, task.CompletedAt);
-            Assert.Null(task.CancelledAt);
+            task.CompletedAt.ShouldBe(task.UpdatedAt);
+            task.CancelledAt.ShouldBeNull();
         }
         else if (expected == OneShotTaskStatus.Cancelled)
         {
-            Assert.Null(task.CompletedAt);
-            Assert.Equal(task.UpdatedAt, task.CancelledAt);
+            task.CompletedAt.ShouldBeNull();
+            task.CancelledAt.ShouldBe(task.UpdatedAt);
         }
         else
         {
-            Assert.Null(task.CompletedAt);
-            Assert.Null(task.CancelledAt);
+            task.CompletedAt.ShouldBeNull();
+            task.CancelledAt.ShouldBeNull();
         }
     }
 
@@ -151,7 +152,7 @@ public sealed class TaskFeatureTests
     {
         var handler = new CompleteOneShotTaskHandler(new MemoryStore(), new TestClock());
 
-        await Assert.ThrowsAsync<TaskNotFoundException>(async () => await handler.Handle(new(42), default));
+        await Should.ThrowAsync<TaskNotFoundException>(async () => await handler.Handle(new(42), default));
     }
 
     [Theory]
@@ -165,11 +166,11 @@ public sealed class TaskFeatureTests
         var original = new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial);
         var store = new MemoryStore(original);
 
-        var exception = await Assert.ThrowsAsync<ValidationException>(async () => await HandlerFor(target, store)());
+        var exception = await Should.ThrowAsync<ValidationException>(async () => await HandlerFor(target, store)());
 
-        Assert.Contains("status", exception.Errors.Keys);
-        Assert.Equal(original, store.Tasks.Single());
-        Assert.Equal(0, store.Updates);
+        exception.Errors.Keys.ShouldContain("status");
+        store.Tasks.Single().ShouldBe(original);
+        store.Updates.ShouldBe(0);
     }
 
     private static Func<ValueTask<TaskItem>> HandlerFor(OneShotTaskStatus target, MemoryStore store) => target switch
