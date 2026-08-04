@@ -14,6 +14,9 @@ public static class TaskEndpoints
             return Results.Created($"/tasks/one-shot/{task.Id}", TaskResponse.From(task));
         });
 
+        app.MapGet("/tasks/one-shot", async (IMediator mediator, CancellationToken cancellationToken) =>
+            Results.Ok((await mediator.Send(new ListOpenOneShotTasksQuery(), cancellationToken)).Select(TaskResponse.From).ToList()));
+
         app.MapPost("/tasks/{id:long}/complete", async (long id, IMediator mediator, CancellationToken cancellationToken) =>
             await RunLifecycleCommand(new CompleteOneShotTaskCommand(id), mediator, cancellationToken));
         app.MapPost("/tasks/{id:long}/pause", async (long id, IMediator mediator, CancellationToken cancellationToken) =>

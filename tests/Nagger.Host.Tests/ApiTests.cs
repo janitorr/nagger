@@ -35,6 +35,42 @@ public sealed class ApiTests
     }
 
     [Fact]
+    public async Task ListOpenOneShotTasks_GivenMixedStatuses_WhenRequested_ThenReturnsActiveAndPausedInIdOrder()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var activeId = await CreateTaskAsync(client, "Active");
+        var pausedId = await CreateTaskAsync(client, "Paused");
+        var doneId = await CreateTaskAsync(client, "Done");
+        var cancelledId = await CreateTaskAsync(client, "Cancelled");
+        using var paused = await client.PostAsync($"/tasks/{pausedId}/pause", null);
+        using var completed = await client.PostAsync($"/tasks/{doneId}/complete", null);
+        using var cancelled = await client.PostAsync($"/tasks/{cancelledId}/cancel", null);
+
+        var response = await client.GetAsync("/tasks/one-shot");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var tasks = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        tasks.RootElement.EnumerateArray().Select(task => task.GetProperty("id").GetInt64()).ShouldBe([activeId, pausedId]);
+        tasks.RootElement[0].GetProperty("status").GetString().ShouldBe("active");
+        tasks.RootElement[1].GetProperty("status").GetString().ShouldBe("paused");
+        tasks.RootElement[0].GetProperty("type").GetString().ShouldBe("one-shot");
+    }
+
+    [Fact]
+    public async Task ListOpenOneShotTasks_GivenNoOpenTasks_WhenRequested_ThenReturnsEmptyArray()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/tasks/one-shot");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var tasks = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        tasks.RootElement.GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
     public async Task MorningReport_GivenTaskDueToday_WhenRequested_ThenReturnsTaskDetails()
     {
         using var factory = new NaggerFactory();
@@ -312,6 +348,7 @@ public sealed class ThrowingStore : ITaskStore
     public ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
     public ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
     public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
+    public ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
 }
 
 public sealed class CapturingLogger : ILogger

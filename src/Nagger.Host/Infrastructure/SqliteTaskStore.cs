@@ -16,6 +16,9 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
     public async ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken) =>
         (await database.Tasks.AsNoTracking().Where(x => x.Status == "active").OrderBy(x => x.Id).ToListAsync(cancellationToken)).Select(ToModel).ToList();
 
+    public async ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) =>
+        (await database.Tasks.AsNoTracking().Where(x => x.Status == "active" || x.Status == "paused").OrderBy(x => x.Id).ToListAsync(cancellationToken)).Select(ToModel).ToList();
+
     public async ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken)
     {
         var entity = await database.Tasks.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);

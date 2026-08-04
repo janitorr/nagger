@@ -9,6 +9,8 @@ public interface ITaskStore
     ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken);
 
     ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken);
+
+    ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken);
 }
 
 public interface IClock
