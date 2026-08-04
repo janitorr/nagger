@@ -1,3 +1,4 @@
+using System.Globalization;
 using Nagger.Core.Tasks;
 using Shouldly;
 
@@ -49,6 +50,19 @@ public sealed class TaskFeatureTests
 
         exception.Errors.Keys.ShouldContain("dueAt");
         store.Tasks.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("2026-08-04T09:00:00.1234567+03:00")]
+    [InlineData("2026-08-04T06:00:00Z")]
+    public async Task CreateTask_GivenFractionalOrUtcDueTimestamp_WhenCreateRequested_ThenCreatesTask(string dueAt)
+    {
+        var store = new MemoryStore();
+        var handler = new CreateOneShotTaskHandler(store, new TestClock());
+
+        var task = await handler.Handle(new("Task", dueAt, "once"), default);
+
+        task.DueAt.ShouldBe(DateTimeOffset.Parse(dueAt, CultureInfo.InvariantCulture));
     }
 
     [Fact]
@@ -157,6 +171,8 @@ public sealed class TaskFeatureTests
 
         task.Status.ShouldBe(expected);
         task.UpdatedAt.ShouldBe(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero));
+        store.Tasks.Single().ShouldBe(task);
+        store.Updates.ShouldBe(1);
         if (expected == OneShotTaskStatus.Done)
         {
             task.CompletedAt.ShouldBe(task.UpdatedAt);
