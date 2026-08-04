@@ -81,13 +81,14 @@ public sealed class ApiTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var report = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("1");
+        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("2");
         report.RootElement.GetProperty("generatedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
         report.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
         var item = report.RootElement.GetProperty("items")[0];
         item.GetProperty("dueAt").GetString().ShouldBe("2026-08-04T09:00:00+03:00");
         item.GetProperty("dueState").GetString().ShouldBe("due_today");
         item.GetProperty("daysOverdue").ValueKind.ShouldBe(JsonValueKind.Null);
+        item.GetProperty("daysUntilDue").ValueKind.ShouldBe(JsonValueKind.Null);
         item.GetProperty("reminderPolicy").GetString().ShouldBe("once");
     }
 
@@ -120,7 +121,7 @@ public sealed class ApiTests
     }
 
     [Fact]
-    public async Task MorningReport_GivenUpcomingTask_WhenRequested_ThenCountsTaskWithoutReturningItem()
+    public async Task MorningReport_GivenUpcomingTaskWithinWindow_WhenRequested_ThenReturnsTaskDetail()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
@@ -130,6 +131,22 @@ public sealed class ApiTests
 
         using var report = JsonDocument.Parse(response);
         report.RootElement.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(1);
+        var item = report.RootElement.GetProperty("items")[0];
+        item.GetProperty("dueState").GetString().ShouldBe("upcoming");
+        item.GetProperty("daysOverdue").ValueKind.ShouldBe(JsonValueKind.Null);
+        item.GetProperty("daysUntilDue").GetInt32().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenUpcomingTaskOutsideWindow_WhenRequested_ThenExcludesTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await CreateTaskAsync(client, "Future", "2026-08-12T09:00:00+03:00", "none");
+
+        using var report = JsonDocument.Parse(await client.GetStringAsync("/reports/morning?date=2026-08-04"));
+
+        report.RootElement.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(0);
         report.RootElement.GetProperty("items").GetArrayLength().ShouldBe(0);
     }
 

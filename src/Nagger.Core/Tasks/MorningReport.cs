@@ -14,7 +14,7 @@ public sealed record MorningReport(
 
 public sealed record MorningReportSummary(int DueToday, int Overdue, int Upcoming);
 
-public sealed record MorningReportItem(long Id, string Title, DateTimeOffset DueAt, string DueState, int? DaysOverdue, string ReminderPolicy);
+public sealed record MorningReportItem(long Id, string Title, DateTimeOffset DueAt, string DueState, int? DaysOverdue, int? DaysUntilDue, string ReminderPolicy);
 
 public sealed class MorningReportHandler(ITaskStore store, IClock clock)
     : IQueryHandler<MorningReportQuery, MorningReport>
@@ -36,20 +36,23 @@ public sealed class MorningReportHandler(ITaskStore store, IClock clock)
             if (comparison == 0)
             {
                 dueToday++;
-                items.Add(ToItem(task, "due_today", null));
+                items.Add(ToItem(task, "due_today", null, null));
             }
             else if (comparison < 0)
             {
                 overdue++;
-                items.Add(ToItem(task, "overdue", reportDate.DayNumber - taskDate.DayNumber));
+                items.Add(ToItem(task, "overdue", reportDate.DayNumber - taskDate.DayNumber, null));
             }
-            else
+            else if (taskDate <= reportDate.AddDays(7))
+            {
                 upcoming++;
+                items.Add(ToItem(task, "upcoming", null, taskDate.DayNumber - reportDate.DayNumber));
+            }
         }
 
-        return new MorningReport("1", clock.UtcNow, reportDate, new MorningReportSummary(dueToday, overdue, upcoming), items);
+        return new MorningReport("2", clock.UtcNow, reportDate, new MorningReportSummary(dueToday, overdue, upcoming), items);
     }
 
-    private static MorningReportItem ToItem(TaskItem task, string dueState, int? daysOverdue) =>
-        new(task.Id, task.Title, task.DueAt, dueState, daysOverdue, task.ReminderPolicy.ToContractValue());
+    private static MorningReportItem ToItem(TaskItem task, string dueState, int? daysOverdue, int? daysUntilDue) =>
+        new(task.Id, task.Title, task.DueAt, dueState, daysOverdue, daysUntilDue, task.ReminderPolicy.ToContractValue());
 }

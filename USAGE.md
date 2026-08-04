@@ -202,7 +202,7 @@ Response: `200 OK`
 
 ```json
 {
-  "schemaVersion": "1",
+  "schemaVersion": "2",
   "generatedAt": "2026-08-03T10:00:00+00:00",
   "date": "2026-08-04",
   "summary": {
@@ -217,6 +217,7 @@ Response: `200 OK`
       "dueAt": "2026-08-04T09:00:00+03:00",
       "dueState": "due_today",
       "daysOverdue": null,
+      "daysUntilDue": null,
       "reminderPolicy": "once"
     },
     {
@@ -225,7 +226,17 @@ Response: `200 OK`
       "dueAt": "2026-08-02T09:00:00+03:00",
       "dueState": "overdue",
       "daysOverdue": 2,
+      "daysUntilDue": null,
       "reminderPolicy": "none"
+    },
+    {
+      "id": 3,
+      "title": "Review insurance renewal",
+      "dueAt": "2026-08-07T09:00:00+03:00",
+      "dueState": "upcoming",
+      "daysOverdue": null,
+      "daysUntilDue": 3,
+      "reminderPolicy": "weekly-until-done"
     }
   ]
 }
@@ -238,9 +249,9 @@ reminder's local due date. The report classifies active reminders as:
 | --- | --- | --- |
 | `due_today` | Local due date equals requested date | Yes |
 | `overdue` | Local due date precedes requested date | Yes, with `daysOverdue` |
-| Upcoming | Local due date follows requested date | No; counted only in `summary.upcoming` |
+| Upcoming | Local due date is 1 through 7 calendar days after requested date | Yes, with `daysUntilDue`; later tasks are excluded |
 
-The report is read-only and does not alter reminder state or timestamps.
+`daysOverdue` is positive only for overdue items, and `daysUntilDue` is 1 through 7 only for upcoming items; both are `null` for due-today items. The report is read-only and does not alter reminder state or timestamps. `reminderPolicy` remains task metadata for future reminder delivery and does not affect report visibility.
 
 ## Errors
 

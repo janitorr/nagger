@@ -171,9 +171,9 @@ public sealed record McpMorningReportResponse(
         report.GeneratedAt,
         report.Date.ToString("yyyy-MM-dd"),
         new McpMorningReportSummaryResponse(report.Summary.DueToday, report.Summary.Overdue, report.Summary.Upcoming),
-        report.Items.Select(item => new McpMorningReportItemResponse(item.Id, item.Title, item.DueAt, item.DueState, item.DaysOverdue, item.ReminderPolicy)).ToList());
+        report.Items.Select(item => new McpMorningReportItemResponse(item.Id, item.Title, item.DueAt, item.DueState, item.DaysOverdue, item.DaysUntilDue, item.ReminderPolicy)).ToList());
 }
 
 public sealed record McpMorningReportSummaryResponse(int DueToday, int Overdue, int Upcoming);
 
-public sealed record McpMorningReportItemResponse(long Id, string Title, DateTimeOffset DueAt, string DueState, int? DaysOverdue, string ReminderPolicy);
+public sealed record McpMorningReportItemResponse(long Id, string Title, DateTimeOffset DueAt, string DueState, int? DaysOverdue, int? DaysUntilDue, string ReminderPolicy);

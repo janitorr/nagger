@@ -66,7 +66,7 @@ public sealed class TaskFeatureTests
     }
 
     [Fact]
-    public async Task Classifies_dates_and_leaves_store_unchanged()
+    public async Task MorningReport_GivenTasksAtEachDueState_WhenRequested_ThenReturnsExclusiveTimingFieldsWithoutWriting()
     {
         var store = new MemoryStore(
             new TaskItem(1, "Today", new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero), ReminderPolicy.None, default, default),
@@ -78,10 +78,33 @@ public sealed class TaskFeatureTests
         var second = await handler.Handle(new("2026-08-04"), default);
 
         first.Summary.ShouldBe(new MorningReportSummary(1, 1, 1));
-        first.Items.Count.ShouldBe(2);
+        first.SchemaVersion.ShouldBe("2");
+        first.Items.Count.ShouldBe(3);
+        first.Items.Single(x => x.Id == 1).DaysOverdue.ShouldBeNull();
+        first.Items.Single(x => x.Id == 1).DaysUntilDue.ShouldBeNull();
         first.Items.Single(x => x.Id == 2).DaysOverdue.ShouldBe(3);
+        first.Items.Single(x => x.Id == 2).DaysUntilDue.ShouldBeNull();
+        first.Items.Single(x => x.Id == 3).DaysOverdue.ShouldBeNull();
+        first.Items.Single(x => x.Id == 3).DaysUntilDue.ShouldBe(1);
         first.Items.ShouldBe(second.Items);
         store.Reads.ShouldBe(2);
+        store.Updates.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenTasksAtAndBeyondSevenDayBoundary_WhenRequested_ThenIncludesOnlyTaskWithinWindow()
+    {
+        var store = new MemoryStore(
+            new TaskItem(1, "Within window", new DateTimeOffset(2026, 8, 11, 8, 0, 0, TimeSpan.Zero), ReminderPolicy.None, default, default),
+            new TaskItem(2, "Beyond window", new DateTimeOffset(2026, 8, 12, 8, 0, 0, TimeSpan.Zero), ReminderPolicy.None, default, default));
+
+        var report = await new MorningReportHandler(store, new TestClock(TimeZoneInfo.Utc)).Handle(new("2026-08-04"), default);
+
+        report.Summary.ShouldBe(new MorningReportSummary(0, 0, 1));
+        report.Items.ShouldHaveSingleItem().Id.ShouldBe(1);
+        report.Items.Single().DueState.ShouldBe("upcoming");
+        report.Items.Single().DaysUntilDue.ShouldBe(7);
+        report.Items.Single().DaysOverdue.ShouldBeNull();
     }
 
     [Fact]
