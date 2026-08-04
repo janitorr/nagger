@@ -1,7 +1,7 @@
 ---
 title: Nagger Product Brief
 created: 2026-08-02
-updated: 2026-08-03
+updated: 2026-08-04
 tags:
   - type/product-brief
   - project/hermes
@@ -37,7 +37,7 @@ Important personal obligations can disappear into notes, memory, or an incomplet
 | --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Capture a one-shot task           | A specific obligation may be forgotten.                            | The assistant creates a task from the person’s explicit request, with a due date and reminder policy.                                       |
 | Capture a recurring task *(planned)* | Repeated maintenance work is easy to lose track of.             | The assistant creates an interval task, such as every two or six months; completion schedules the next occurrence from the completion date. |
-| Generate the morning digest       | The person should not reconstruct priorities from scattered notes. | The AI assistant reads the deterministic report and creates a concise Morning Digest for the person, covering due-today and overdue tasks.  |
+| Generate the morning digest       | The person should not reconstruct priorities from scattered notes. | The AI assistant reads the deterministic report and creates a concise Morning Digest for the person, covering overdue, due-today, and next-seven-day tasks. |
 | Receive follow-up reminders *(planned)* | A due item can remain unfinished after its first reminder.    | `weekly-until-done` tasks are eligible for weekly follow-up until completed or cancelled.                                                   |
 | Complete, pause, or cancel a task | The system must reflect reality without deleting history.          | The assistant submits an explicit validated command; terminal task records remain intact.                                                   |
 
@@ -213,6 +213,8 @@ For each active one-shot task, compare the calendar date of its `dueAt` timestam
 - Due date after the report date: `upcoming`.
 - If status is not `active`, exclude from normal due reports.
 
+The report includes all active overdue and due-today tasks. It includes upcoming tasks only when their local due date is within the next seven calendar days, with `daysUntilDue` from 1 through 7; later tasks are excluded from both items and the upcoming summary count. Overdue items provide positive `daysOverdue` and null `daysUntilDue`; due-today items set both fields to null.
+
 A future recurring task will apply the same rule to `nextDueAt`.
 
 Time of day may order items within a report, but it does not change a task from `due_today` to `overdue`.
@@ -342,7 +344,7 @@ Report contract rules:
 
 ```json
 {
-  "schemaVersion": "1",
+  "schemaVersion": "2",
   "generatedAt": "2026-08-03T07:00:00+03:00",
   "date": "2026-08-03",
   "summary": {
@@ -357,6 +359,7 @@ Report contract rules:
       "dueAt": "2026-08-01T09:00:00+03:00",
       "dueState": "overdue",
       "daysOverdue": 2,
+      "daysUntilDue": null,
       "reminderPolicy": "once"
     }
   ]

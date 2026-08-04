@@ -27,7 +27,7 @@ public sealed record MorningReportResponse(
         report.GeneratedAt,
         report.Date.ToString("yyyy-MM-dd"),
         new MorningReportSummaryResponse(report.Summary.DueToday, report.Summary.Overdue, report.Summary.Upcoming),
-        report.Items.Select(x => new MorningReportItemResponse(x.Id, x.Title, x.DueAt, x.DueState, x.DaysOverdue, x.ReminderPolicy)).ToList());
+        report.Items.Select(x => new MorningReportItemResponse(x.Id, x.Title, x.DueAt, x.DueState, x.DaysOverdue, x.DaysUntilDue, x.ReminderPolicy)).ToList());
 }
 
 public sealed record MorningReportSummaryResponse(
@@ -41,4 +41,5 @@ public sealed record MorningReportItemResponse(
     DateTimeOffset DueAt,
     string DueState,
     int? DaysOverdue,
+    int? DaysUntilDue,
     string ReminderPolicy);

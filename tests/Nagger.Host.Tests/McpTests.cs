@@ -196,13 +196,17 @@ public sealed class McpTests
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
-        await CreateTaskAsync(client, session);
+        await CreateTaskAsync(client, session, dueAt: "2026-08-05T09:00:00+03:00");
 
         using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
         var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        report.GetProperty("schemaVersion").GetString().ShouldBe("1");
-        report.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
+        report.GetProperty("schemaVersion").GetString().ShouldBe("2");
+        report.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(1);
+        var item = report.GetProperty("items")[0];
+        item.GetProperty("dueState").GetString().ShouldBe("upcoming");
+        item.GetProperty("daysOverdue").ValueKind.ShouldBe(JsonValueKind.Null);
+        item.GetProperty("daysUntilDue").GetInt32().ShouldBe(1);
     }
 
     [Fact]
@@ -251,7 +255,7 @@ public sealed class McpTests
         (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()).Status.ShouldBe("paused");
     }
 
-    [Fact]
+[Fact]
     public async Task Mcp_GivenInitializedSession_WhenToolsListed_ThenAdvertisesRecurringTools()
     {
         using var factory = new NaggerFactory();
@@ -412,12 +416,12 @@ public sealed class McpTests
         return response.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("id").GetInt64();
     }
 
-    private static async Task<long> CreateTaskAsync(HttpClient client, McpSession session, string title = "Task", int requestId = 2)
+    private static async Task<long> CreateTaskAsync(HttpClient client, McpSession session, string title = "Task", int requestId = 2, string dueAt = "2026-08-04T09:00:00+03:00")
     {
         using var response = await SendMcpAsync(client, session, requestId, "tools/call", new
         {
             name = "create_one_shot_task",
-            arguments = new { title, dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" }
+            arguments = new { title, dueAt, reminderPolicy = "none" }
         });
         return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
     }
