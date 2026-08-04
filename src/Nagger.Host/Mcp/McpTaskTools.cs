@@ -41,6 +41,11 @@ public sealed class McpTaskTools(IMediator mediator)
     public Task<CallToolResult> CancelOneShotTask([Description("Identifier returned by create_one_shot_task or get_morning_report.")] long id, CancellationToken cancellationToken) =>
         Run(async () => McpTaskResponse.From(await mediator.Send(new CancelOneShotTaskCommand(id), cancellationToken)));
 
+    [McpServerTool(Name = "list_one_shot_tasks", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse[]))]
+    [Description("Use to discover active and paused one-shot tasks. Each returned id is the identifier required by lifecycle tools.")]
+    public Task<CallToolResult> ListOneShotTasks(CancellationToken cancellationToken) =>
+        Run(async () => (await mediator.Send(new ListOpenOneShotTasksQuery(), cancellationToken)).Select(McpTaskResponse.From).ToArray());
+
     [McpServerTool(Name = "get_morning_report", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpMorningReportResponse))]
     [Description("Use to review active one-shot tasks for a specific date in the configured timezone. Returns due-today, overdue, and upcoming counts without changing task state.")]
     public Task<CallToolResult> GetMorningReport([RequiredAttribute, Description("Required report date in YYYY-MM-DD format, interpreted in the configured timezone.")] string? date, CancellationToken cancellationToken) =>

@@ -104,6 +104,33 @@ public sealed class TaskFeatureTests
         report.Items.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task ListOpenOneShotTasks_GivenMixedStatuses_WhenRequested_ThenReturnsActiveAndPausedInAscendingIdOrder()
+    {
+        var store = new MemoryStore(
+            new TaskItem(4, "Done", default, ReminderPolicy.None, default, default, Status: OneShotTaskStatus.Done),
+            new TaskItem(3, "Paused", default, ReminderPolicy.None, default, default, Status: OneShotTaskStatus.Paused),
+            new TaskItem(2, "Cancelled", default, ReminderPolicy.None, default, default, Status: OneShotTaskStatus.Cancelled),
+            new TaskItem(1, "Active", default, ReminderPolicy.None, default, default));
+
+        var tasks = await new ListOpenOneShotTasksHandler(store).Handle(new(), default);
+
+        tasks.Select(task => task.Id).ShouldBe([1, 3]);
+    }
+
+    [Fact]
+    public async Task ListOpenOneShotTasks_GivenTasks_WhenRequested_ThenLeavesTaskDataUnchanged()
+    {
+        var original = new TaskItem(1, "Active", new DateTimeOffset(2026, 8, 4, 9, 0, 0, TimeSpan.FromHours(3)), ReminderPolicy.Once, new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero));
+        var store = new MemoryStore(original);
+
+        var tasks = await new ListOpenOneShotTasksHandler(store).Handle(new(), default);
+
+        tasks.ShouldHaveSingleItem().ShouldBe(original);
+        store.Tasks.ShouldHaveSingleItem().ShouldBe(original);
+        store.Updates.ShouldBe(0);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("2026/08/04")]
@@ -204,6 +231,8 @@ public sealed class TaskFeatureTests
             Reads++;
             return ValueTask.FromResult<IReadOnlyList<TaskItem>>(Tasks.Where(x => x.Status == OneShotTaskStatus.Active).ToList());
         }
+        public ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) =>
+            ValueTask.FromResult<IReadOnlyList<TaskItem>>(Tasks.Where(x => x.Status is OneShotTaskStatus.Active or OneShotTaskStatus.Paused).OrderBy(x => x.Id).ToList());
         public ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken) => ValueTask.FromResult(Tasks.SingleOrDefault(x => x.Id == id));
         public ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken)
         {

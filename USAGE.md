@@ -22,6 +22,7 @@ endpoint exposes these tools:
 | `pause_one_shot_task` | Pause an active reminder by `id`. |
 | `resume_one_shot_task` | Resume a paused reminder by `id`. |
 | `cancel_one_shot_task` | Cancel an active or paused reminder by `id`. |
+| `list_one_shot_tasks` | Discover active and paused reminders and their lifecycle-tool `id` values. |
 | `get_morning_report` | Read the morning report for a `YYYY-MM-DD` `date`. |
 
 Tool results contain structured task and report data using the same fields as
@@ -91,6 +92,20 @@ Example:
 
 ```bash
 curl --request POST http://localhost:5246/tasks/1/pause
+```
+
+## List Open Reminders
+
+`GET /tasks/one-shot`
+
+Returns `200 OK` with an array of the full task representation used by the
+create and lifecycle endpoints. The array contains active and paused reminders
+only, ordered by ascending `id`; completed and cancelled reminders are omitted.
+Use the returned `id` to select a reminder for a lifecycle action. When no open
+reminders exist, the response is `[]`.
+
+```bash
+curl http://localhost:5246/tasks/one-shot
 ```
 
 ## Get A Morning Report
