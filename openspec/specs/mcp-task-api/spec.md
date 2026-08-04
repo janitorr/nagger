@@ -33,6 +33,17 @@ The MCP server SHALL expose `complete_one_shot_task`, `pause_one_shot_task`, `re
 - **WHEN** a client calls a lifecycle tool for an unknown task or a task in a state that cannot accept that action
 - **THEN** the server returns an MCP tool error and leaves persisted task state unchanged
 
+### Requirement: List open one-shot tasks through MCP
+The MCP server SHALL expose a read-only `list_one_shot_tasks` tool with no required arguments. The tool SHALL execute the Core open-task list query and return structured content containing the established full task representation for each active and paused one-shot task, ordered by ascending durable task ID. The tool description SHALL identify each returned `id` as the identifier used by lifecycle tools.
+
+#### Scenario: List open tasks through MCP
+- **WHEN** a client calls `list_one_shot_tasks` after active and paused one-shot tasks have been persisted
+- **THEN** the tool returns structured task representations for those tasks in ascending ID order without changing task state or timestamps
+
+#### Scenario: List when no open tasks exist through MCP
+- **WHEN** a client calls `list_one_shot_tasks` and no active or paused one-shot tasks exist
+- **THEN** the tool returns structured content containing an empty task list
+
 ### Requirement: Read morning reports through MCP
 The MCP server SHALL expose a `get_morning_report` tool accepting a `date` in `YYYY-MM-DD` format. It SHALL execute the existing Core morning-report query and return its schema version, generation timestamp, requested date, summary, and items.
 
