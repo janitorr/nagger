@@ -46,6 +46,42 @@ public sealed class McpTaskTools(IMediator mediator)
     public Task<CallToolResult> ListOneShotTasks(CancellationToken cancellationToken) =>
         Run(async () => (await mediator.Send(new ListOpenOneShotTasksQuery(), cancellationToken)).Select(McpTaskResponse.From).ToArray());
 
+    [McpServerTool(Name = "create_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse))]
+    [Description("Use when the user wants to set up a task that repeats on an interval, such as a weekly or monthly obligation. Creates a recurring template and its first instance; do not use for one-off reminders.")]
+    public Task<CallToolResult> CreateRecurringTask(
+        [RequiredAttribute, Description("Required nonempty task title.")] string? title,
+        [RequiredAttribute, Description("Required first due date in YYYY-MM-DD format.")] string? startDate,
+        [RequiredAttribute, Description("Required positive interval between recurrences, for example 1.")] int? recurrenceEvery,
+        [RequiredAttribute, Description("Required recurrence unit: days, weeks, or months.")] string? recurrenceUnit,
+        [RequiredAttribute, Description("Required reminder policy: none, once, or weekly-until-done.")] string? reminderPolicy,
+        CancellationToken cancellationToken) =>
+        Run(async () => McpRecurringTemplateResponse.From(await mediator.Send(new CreateRecurringTaskCommand(title, startDate, new RecurrenceRuleInput(recurrenceEvery, recurrenceUnit), reminderPolicy), cancellationToken)));
+
+    [McpServerTool(Name = "complete_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse))]
+    [Description("Use when the user says an active recurring-task instance is finished. Marks it done and schedules the next instance from the template's recurrence.")]
+    public Task<CallToolResult> CompleteRecurringTask([Description("Identifier of the recurring-task instance returned by list_recurring_tasks or the morning report.")] long id, CancellationToken cancellationToken) =>
+        Run(async () => McpTaskResponse.From(await mediator.Send(new CompleteRecurringTaskCommand(id), cancellationToken)));
+
+    [McpServerTool(Name = "pause_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse))]
+    [Description("Use when the user wants to temporarily stop an active recurring task. Pauses the template and its current instance; it can later be resumed.")]
+    public Task<CallToolResult> PauseRecurringTask([Description("Identifier returned by create_recurring_task or list_recurring_tasks.")] long id, CancellationToken cancellationToken) =>
+        Run(async () => McpRecurringTemplateResponse.From(await mediator.Send(new PauseRecurringTaskCommand(id), cancellationToken)));
+
+    [McpServerTool(Name = "resume_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse))]
+    [Description("Use only to reactivate a paused recurring task. Sets the template and its current instance back to active.")]
+    public Task<CallToolResult> ResumeRecurringTask([Description("Identifier returned by create_recurring_task or list_recurring_tasks.")] long id, CancellationToken cancellationToken) =>
+        Run(async () => McpRecurringTemplateResponse.From(await mediator.Send(new ResumeRecurringTaskCommand(id), cancellationToken)));
+
+    [McpServerTool(Name = "cancel_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse))]
+    [Description("Use when the user no longer wants a recurring task to continue. Cancels the template and all its generated instances; it cannot be resumed.")]
+    public Task<CallToolResult> CancelRecurringTask([Description("Identifier returned by create_recurring_task or list_recurring_tasks.")] long id, CancellationToken cancellationToken) =>
+        Run(async () => McpRecurringTemplateResponse.From(await mediator.Send(new CancelRecurringTaskCommand(id), cancellationToken)));
+
+    [McpServerTool(Name = "list_recurring_tasks", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse[]))]
+    [Description("Use to discover recurring task templates. Each returned id is the identifier required by recurring lifecycle tools.")]
+    public Task<CallToolResult> ListRecurringTasks(CancellationToken cancellationToken) =>
+        Run(async () => (await mediator.Send(new ListRecurringTemplatesQuery(), cancellationToken)).Select(McpRecurringTemplateResponse.From).ToArray());
+
     [McpServerTool(Name = "get_morning_report", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpMorningReportResponse))]
     [Description("Use to review active one-shot tasks for a specific date in the configured timezone. Returns due-today, overdue, and upcoming counts without changing task state.")]
     public Task<CallToolResult> GetMorningReport([RequiredAttribute, Description("Required report date in YYYY-MM-DD format, interpreted in the configured timezone.")] string? date, CancellationToken cancellationToken) =>
@@ -67,6 +103,10 @@ public sealed class McpTaskTools(IMediator mediator)
             return Error(string.Join(" ", exception.Errors.SelectMany(error => error.Value)));
         }
         catch (TaskNotFoundException exception)
+        {
+            return Error(exception.Message);
+        }
+        catch (RecurringTaskNotFoundException exception)
         {
             return Error(exception.Message);
         }
@@ -93,6 +133,31 @@ public sealed record McpTaskResponse(
 {
     public static McpTaskResponse From(TaskItem task) => new(task.Id, task.Title, "one-shot", task.Status.ToContractValue(), task.DueAt, task.ReminderPolicy.ToContractValue(), task.CreatedAt, task.UpdatedAt, task.CompletedAt, task.CancelledAt);
 }
+
+public sealed record McpRecurringTemplateResponse(
+    long Id,
+    string Title,
+    string StartDate,
+    McpRecurrenceRuleResponse Recurrence,
+    string ReminderPolicy,
+    string Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? CancelledAt)
+{
+    public static McpRecurringTemplateResponse From(RecurringTaskTemplate template) => new(
+        template.Id,
+        template.Title,
+        template.StartDate.ToString("yyyy-MM-dd"),
+        new McpRecurrenceRuleResponse(template.Recurrence.Every, template.Recurrence.Unit.ToContractValue()),
+        template.ReminderPolicy.ToContractValue(),
+        template.Status.ToContractValue(),
+        template.CreatedAt,
+        template.UpdatedAt,
+        template.CancelledAt);
+}
+
+public sealed record McpRecurrenceRuleResponse(int Every, string Unit);
 
 public sealed record McpMorningReportResponse(
     string SchemaVersion,
