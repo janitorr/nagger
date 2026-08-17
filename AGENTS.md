@@ -10,6 +10,7 @@
 ## Testing
 
 - Name new or modified tests `Subject_GivenCondition_WhenAction_ThenOutcome`. The action describes the domain operation, such as `WhenCompleteRequested`, rather than generic transport wording such as `WhenPosted`. Do not rename existing tests solely to apply this convention.
+- Run Core mutation testing with `dotnet stryker` (config: `stryker-config.json`, mutates `Nagger.Core` against the Core tests). The run fails when the mutation score drops below 75% (`break` threshold); treat 80% (`high`) as the target. When adding or modifying feature code, run mutation testing and add tests for any newly surviving mutants.
 
 ## Boundaries
 
