@@ -29,10 +29,20 @@ When ready to implement, run /opsx-apply
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create a working branch BEFORE writing any artifacts**
+2. **Confirm the change is new, then create a working branch BEFORE writing any artifacts**
 
    Proposals must not be authored on `main` (or a stale checkout). Before creating
-   any artifact, create a dedicated branch from the current checkout:
+   any artifact:
+   - First confirm no change with this name already exists (run
+     `openspec show "<name>"` or `openspec list --json`). If it does, stop and ask
+     the user whether to continue it or create a new one — do not branch yet.
+   - Verify the current branch is `main` and up to date before branching; if not,
+     ask the user which base to use rather than branching from an unrelated or
+     stale checkout.
+   - Ensure a clean working tree (no uncommitted changes) so the new branch starts
+     from a known state; if there are uncommitted changes, ask whether to stash,
+     commit, or discard them.
+   - Then create a dedicated branch:
    ```bash
    git checkout -b "<branch-name>"
    ```
@@ -41,8 +51,6 @@ When ready to implement, run /opsx-apply
    implemented.
    - If a branch with that name already exists, ask the user whether to use it,
      branch from it, or pick another name — never silently reuse or overwrite it.
-   - If the change name was not yet resolved (input was only a description), create
-     the branch once the name is known, still before creating any artifact.
    - This keeps every artifact (proposal, specs, design, tasks) off `main` and
      makes later implementation and review straightforward.
 
@@ -126,8 +134,8 @@ After completing all artifacts, summarize:
 
 **Guardrails**
 - Create a dedicated branch before writing any artifact; never author proposals directly on `main` or a stale checkout
+- Confirm the change is new and branch from a clean, up-to-date `main` (ask the user before branching from anything else, reusing an existing branch, or starting from a dirty tree)
 - Create every artifact the apply phase transitively depends on, not just the ids listed in `apply.requires`
 - Always read dependency artifacts before creating a new one - re-read from disk, not from conversation memory (files may have changed since you last saw them)
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
-- If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next

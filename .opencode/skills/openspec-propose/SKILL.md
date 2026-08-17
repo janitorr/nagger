@@ -37,13 +37,38 @@ When ready to implement, run /opsx-apply
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Confirm the change is new, then create a working branch BEFORE writing any artifacts**
+
+   Proposals must not be authored on `main` (or a stale checkout). Before creating
+   any artifact:
+   - First confirm no change with this name already exists (run
+     `openspec show "<name>"` or `openspec list --json`). If it does, stop and ask
+     the user whether to continue it or create a new one — do not branch yet.
+   - Verify the current branch is `main` and up to date before branching; if not,
+     ask the user which base to use rather than branching from an unrelated or
+     stale checkout.
+   - Ensure a clean working tree (no uncommitted changes) so the new branch starts
+     from a known state; if there are uncommitted changes, ask whether to stash,
+     commit, or discard them.
+   - Then create a dedicated branch:
+   ```bash
+   git checkout -b "<branch-name>"
+   ```
+   Derive `<branch-name>` from the change name (e.g., change `add-user-auth` →
+   branch `add-user-auth`). Do not push or open a PR — proposals stay local until
+   implemented.
+   - If a branch with that name already exists, ask the user whether to use it,
+     branch from it, or pick another name — never silently reuse or overwrite it.
+   - This keeps every artifact (proposal, specs, design, tasks) off `main` and
+     makes later implementation and review straightforward.
+
+3. **Create the change directory**
    ```bash
    openspec new change "<name>"
    ```
    This creates a scaffolded change in the planning home resolved by the CLI with `.openspec.yaml`.
 
-3. **Get the artifact build order**
+4. **Get the artifact build order**
    ```bash
    openspec status --change "<name>" --json
    ```
@@ -52,7 +77,7 @@ When ready to implement, run /opsx-apply
    - `artifacts`: list of all artifacts, each with its `status` and its `requires` edges (the artifact IDs it directly depends on)
    - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
 
-4. **Create every artifact in the required set**
+5. **Create every artifact in the required set**
 
    Use a todo list to track progress through the artifacts.
 
@@ -91,7 +116,7 @@ When ready to implement, run /opsx-apply
       - Ask the user to clarify
       - Then continue with creation
 
-5. **Show final status**
+6. **Show final status**
    ```bash
    openspec status --change "<name>"
    ```
@@ -116,8 +141,9 @@ After completing all artifacts, summarize:
   - These guide what you write, but should never appear in the output
 
 **Guardrails**
+- Create a dedicated branch before writing any artifact; never author proposals directly on `main` or a stale checkout
+- Confirm the change is new and branch from a clean, up-to-date `main` (ask the user before branching from anything else, reusing an existing branch, or starting from a dirty tree)
 - Create every artifact the apply phase transitively depends on, not just the ids listed in `apply.requires`
 - Always read dependency artifacts before creating a new one - re-read from disk, not from conversation memory (files may have changed since you last saw them)
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
-- If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next
