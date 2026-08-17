@@ -83,7 +83,7 @@ public sealed class McpTaskTools(IMediator mediator)
         Run(async () => (await mediator.Send(new ListRecurringTemplatesQuery(), cancellationToken)).Select(McpRecurringTemplateResponse.From).ToArray());
 
     [McpServerTool(Name = "get_morning_report", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpMorningReportResponse))]
-    [Description("Use to review active one-shot tasks for a specific date in the configured timezone. Returns due-today, overdue, and upcoming counts without changing task state.")]
+    [Description("Use to review active one-shot tasks for a specific date in the configured timezone. Returns due-today and overdue tasks plus upcoming tasks within the next seven days, with daysOverdue/daysUntilDue timing fields, without changing task state.")]
     public Task<CallToolResult> GetMorningReport([RequiredAttribute, Description("Required report date in YYYY-MM-DD format, interpreted in the configured timezone.")] string? date, CancellationToken cancellationToken) =>
         Run(async () => McpMorningReportResponse.From(await mediator.Send(new MorningReportQuery(date), cancellationToken)));
 

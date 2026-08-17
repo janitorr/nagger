@@ -196,6 +196,25 @@ public sealed class McpTests
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
+        await CreateTaskAsync(client, session);
+
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
+        var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        report.GetProperty("schemaVersion").GetString().ShouldBe("2");
+        report.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
+        var item = report.GetProperty("items")[0];
+        item.GetProperty("dueState").GetString().ShouldBe("due_today");
+        item.GetProperty("daysOverdue").ValueKind.ShouldBe(JsonValueKind.Null);
+        item.GetProperty("daysUntilDue").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenUpcomingTaskWithinWindow_WhenMorningReportRequested_ThenReturnsUpcomingDetail()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
         await CreateTaskAsync(client, session, dueAt: "2026-08-05T09:00:00+03:00");
 
         using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
@@ -255,7 +274,7 @@ public sealed class McpTests
         (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()).Status.ShouldBe("paused");
     }
 
-[Fact]
+    [Fact]
     public async Task Mcp_GivenInitializedSession_WhenToolsListed_ThenAdvertisesRecurringTools()
     {
         using var factory = new NaggerFactory();
