@@ -11,6 +11,10 @@ on:
       - "openspec/**"
       - "README.md"
       - "AGENTS.md"
+      - "USAGE.md"
+      - "DEVELOPMENT.md"
+      - "**/*.md"
+      - ".opencode/**"
   pull_request:
     branches: [ "main" ]
     paths-ignore:
@@ -18,6 +22,10 @@ on:
       - "openspec/**"
       - "README.md"
       - "AGENTS.md"
+      - "USAGE.md"
+      - "DEVELOPMENT.md"
+      - "**/*.md"
+      - ".opencode/**"
 
 jobs:
   build:
