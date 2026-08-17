@@ -7,7 +7,7 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
 {
     public async ValueTask<TaskItem> AddAsync(TaskItem task, CancellationToken cancellationToken)
     {
-        var entity = new TaskEntity { Title = task.Title, DueAt = task.DueAt, ReminderPolicy = task.ReminderPolicy.ToContractValue(), CreatedAt = task.CreatedAt, UpdatedAt = task.UpdatedAt, LastReminderAt = task.LastReminderAt, Status = task.Status.ToContractValue(), CompletedAt = task.CompletedAt, CancelledAt = task.CancelledAt };
+        var entity = new TaskEntity { Title = task.Title, DueAt = task.DueAt, ReminderPolicy = task.ReminderPolicy.ToContractValue(), CreatedAt = task.CreatedAt, UpdatedAt = task.UpdatedAt, LastReminderAt = task.LastReminderAt, Status = task.Status.ToContractValue(), CompletedAt = task.CompletedAt, CancelledAt = task.CancelledAt, RecurringTaskId = task.RecurringTaskId };
         database.Tasks.Add(entity);
         await database.SaveChangesAsync(cancellationToken);
         return ToModel(entity);
@@ -18,6 +18,9 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
 
     public async ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) =>
         (await database.Tasks.AsNoTracking().Where(x => x.Status == "active" || x.Status == "paused").OrderBy(x => x.Id).ToListAsync(cancellationToken)).Select(ToModel).ToList();
+
+    public async ValueTask<IReadOnlyList<TaskItem>> GetByRecurringTaskIdAsync(long recurringTaskId, CancellationToken cancellationToken) =>
+        (await database.Tasks.AsNoTracking().Where(x => x.RecurringTaskId == recurringTaskId).OrderBy(x => x.Id).ToListAsync(cancellationToken)).Select(ToModel).ToList();
 
     public async ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken)
     {
@@ -35,5 +38,5 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
         await database.SaveChangesAsync(cancellationToken);
     }
 
-    private static TaskItem ToModel(TaskEntity entity) => new(entity.Id, entity.Title, entity.DueAt, entity.ReminderPolicy == "once" ? ReminderPolicy.Once : entity.ReminderPolicy == "weekly-until-done" ? ReminderPolicy.WeeklyUntilDone : ReminderPolicy.None, entity.CreatedAt, entity.UpdatedAt, entity.LastReminderAt, OneShotTaskStatuses.FromContractValue(entity.Status), entity.CompletedAt, entity.CancelledAt);
+    private static TaskItem ToModel(TaskEntity entity) => new(entity.Id, entity.Title, entity.DueAt, entity.ReminderPolicy == "once" ? ReminderPolicy.Once : entity.ReminderPolicy == "weekly-until-done" ? ReminderPolicy.WeeklyUntilDone : ReminderPolicy.None, entity.CreatedAt, entity.UpdatedAt, entity.LastReminderAt, OneShotTaskStatuses.FromContractValue(entity.Status), entity.CompletedAt, entity.CancelledAt, entity.RecurringTaskId);
 }

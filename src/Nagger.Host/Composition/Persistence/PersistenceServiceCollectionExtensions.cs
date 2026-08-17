@@ -12,6 +12,7 @@ public static class PersistenceServiceCollectionExtensions
             options.UseSqlite($"Data Source={configuration["Nagger:DatabasePath"] ?? "nagger.db"}"));
         services.AddScoped<ITaskStore, SqliteTaskStore>();
         services.AddSingleton<IClock, ConfiguredClock>();
+        services.AddScoped<IRecurringTaskTemplateStore, SqliteRecurringTaskTemplateStore>();
         return services;
     }
 }
