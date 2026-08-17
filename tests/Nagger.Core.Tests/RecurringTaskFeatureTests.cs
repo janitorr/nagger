@@ -20,6 +20,7 @@ public sealed class RecurringTaskFeatureTests
     [InlineData("2026-01-31", 2, "2026-03-31")]
     [InlineData("2026-10-31", 1, "2026-11-30")]
     [InlineData("2026-12-31", 1, "2027-01-31")]
+    [InlineData("2026-01-15", 11, "2026-12-15")]
     public void CalculateNextDue_GivenMonthEndCompletion_WhenAddingMonths_ThenClampsToTargetMonthEnd(string completionDate, int months, string expected)
     {
         RecurrenceCalculator.CalculateNextDue(DateOnly.Parse(completionDate), new RecurrenceRule(months, RecurrenceUnit.Months)).ShouldBe(DateOnly.Parse(expected));
@@ -68,6 +69,30 @@ public sealed class RecurringTaskFeatureTests
         exception.Errors.Keys.ShouldContain(field);
         taskStore.Tasks.ShouldBeEmpty();
         templateStore.Templates.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("days")]
+    [InlineData("months")]
+    public async Task CreateRecurringTask_GivenValidUnit_WhenCreateRequested_ThenCreatesTemplate(string unit)
+    {
+        var taskStore = new MemoryStore();
+        var handler = new CreateRecurringTaskHandler(new MemoryRecurringTemplateStore(), taskStore, new TestClock());
+
+        var template = await handler.Handle(new("Team sync", "2026-08-04", new RecurrenceRuleInput(2, unit), "once"), default);
+
+        template.Recurrence.Unit.ToContractValue().ShouldBe(unit);
+        taskStore.Tasks.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task CreateRecurringTask_GivenStartDateToday_WhenCreateRequested_ThenCreatesTemplate()
+    {
+        var handler = new CreateRecurringTaskHandler(new MemoryRecurringTemplateStore(), new MemoryStore(), new TestClock());
+
+        var template = await handler.Handle(new("Team sync", "2026-08-03", new RecurrenceRuleInput(1, "weeks"), "once"), default);
+
+        template.StartDate.ShouldBe(new DateOnly(2026, 8, 3));
     }
 
     [Fact]
@@ -134,6 +159,19 @@ public sealed class RecurringTaskFeatureTests
     }
 
     [Fact]
+    public async Task PauseRecurringTask_GivenNoActiveInstance_WhenPauseRequested_ThenPausesTemplateAndLeavesInstances()
+    {
+        var templateStore = new MemoryRecurringTemplateStore(Template());
+        var taskStore = new MemoryStore(new TaskItem(1, "Team sync", default, ReminderPolicy.Once, default, default, Status: OneShotTaskStatus.Paused, RecurringTaskId: 1));
+        var handler = new PauseRecurringTaskHandler(templateStore, taskStore, new TestClock());
+
+        var updated = await handler.Handle(new(1), default);
+
+        updated.Status.ShouldBe(RecurringTaskStatus.Paused);
+        taskStore.Tasks.Single().Status.ShouldBe(OneShotTaskStatus.Paused);
+    }
+
+    [Fact]
     public async Task PauseRecurringTask_GivenPausedTemplate_WhenPauseRequested_ThenRejectsWithoutChanges()
     {
         var templateStore = new MemoryRecurringTemplateStore(Template(status: RecurringTaskStatus.Paused));
@@ -158,6 +196,19 @@ public sealed class RecurringTaskFeatureTests
 
         updated.Status.ShouldBe(RecurringTaskStatus.Active);
         templateStore.Templates.Single().Status.ShouldBe(RecurringTaskStatus.Active);
+        taskStore.Tasks.Single().Status.ShouldBe(OneShotTaskStatus.Active);
+    }
+
+    [Fact]
+    public async Task ResumeRecurringTask_GivenNoPausedInstance_WhenResumeRequested_ThenResumesTemplateAndLeavesInstances()
+    {
+        var templateStore = new MemoryRecurringTemplateStore(Template(status: RecurringTaskStatus.Paused));
+        var taskStore = new MemoryStore(new TaskItem(1, "Team sync", default, ReminderPolicy.Once, default, default, Status: OneShotTaskStatus.Active, RecurringTaskId: 1));
+        var handler = new ResumeRecurringTaskHandler(templateStore, taskStore, new TestClock());
+
+        var updated = await handler.Handle(new(1), default);
+
+        updated.Status.ShouldBe(RecurringTaskStatus.Active);
         taskStore.Tasks.Single().Status.ShouldBe(OneShotTaskStatus.Active);
     }
 
@@ -188,9 +239,19 @@ public sealed class RecurringTaskFeatureTests
 
         updated.Status.ShouldBe(RecurringTaskStatus.Cancelled);
         updated.CancelledAt.ShouldNotBeNull();
+        templateStore.Templates.Single().Status.ShouldBe(RecurringTaskStatus.Cancelled);
+        templateStore.Templates.Single().CancelledAt.ShouldNotBeNull();
         taskStore.Tasks.Single(x => x.Id == 1).Status.ShouldBe(OneShotTaskStatus.Cancelled);
         taskStore.Tasks.Single(x => x.Id == 2).Status.ShouldBe(OneShotTaskStatus.Cancelled);
         taskStore.Tasks.Single(x => x.Id == 3).Status.ShouldBe(OneShotTaskStatus.Done);
+    }
+
+    [Fact]
+    public void RecurringTaskStatuses_GivenContractValue_WhenParsed_ThenReturnsStatus()
+    {
+        RecurringTaskStatuses.FromContractValue("active").ShouldBe(RecurringTaskStatus.Active);
+        RecurringTaskStatuses.FromContractValue("paused").ShouldBe(RecurringTaskStatus.Paused);
+        RecurringTaskStatuses.FromContractValue("cancelled").ShouldBe(RecurringTaskStatus.Cancelled);
     }
 
     [Fact]
