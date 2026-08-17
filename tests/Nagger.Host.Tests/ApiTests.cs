@@ -340,6 +340,204 @@ public sealed class ApiTests
         using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return task.RootElement.GetProperty("id").GetInt64();
     }
+
+    [Fact]
+    public async Task CreateRecurringTask_GivenValidPayload_WhenCreateRequested_ThenReturnsCreatedTemplateAndFirstInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var startDate = FutureStartDate();
+
+        var response = await client.PostAsJsonAsync("/tasks/recurring", new { title = "Team sync", startDate, recurrence = new { every = 1, unit = "weeks" }, reminderPolicy = "once" });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        template.RootElement.GetProperty("id").GetInt64().ShouldBe(1);
+        template.RootElement.GetProperty("title").GetString().ShouldBe("Team sync");
+        template.RootElement.GetProperty("startDate").GetString().ShouldBe(startDate);
+        template.RootElement.GetProperty("recurrence").GetProperty("every").GetInt32().ShouldBe(1);
+        template.RootElement.GetProperty("recurrence").GetProperty("unit").GetString().ShouldBe("weeks");
+        template.RootElement.GetProperty("reminderPolicy").GetString().ShouldBe("once");
+        template.RootElement.GetProperty("status").GetString().ShouldBe("active");
+        template.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+
+        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
+        var instance = tasks.RootElement.EnumerateArray().Single();
+        instance.GetProperty("title").GetString().ShouldBe("Team sync");
+        instance.GetProperty("status").GetString().ShouldBe("active");
+    }
+
+    [Fact]
+    public async Task CreateRecurringTask_GivenInvalidPayload_WhenCreateRequested_ThenReturnsValidationErrorsWithoutPersisting()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/tasks/recurring", new { title = "", startDate = "not-a-date", recurrence = new { every = 0, unit = "hourly" }, reminderPolicy = "daily" });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var errors = body.RootElement.GetProperty("errors");
+        errors.TryGetProperty("title", out _).ShouldBeTrue();
+        errors.TryGetProperty("startDate", out _).ShouldBeTrue();
+        errors.TryGetProperty("recurrence.every", out _).ShouldBeTrue();
+        errors.TryGetProperty("recurrence.unit", out _).ShouldBeTrue();
+        errors.TryGetProperty("reminderPolicy", out _).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ListRecurringTemplates_GivenNoTemplates_WhenRequested_ThenReturnsEmptyArray()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/tasks/recurring");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var templates = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        templates.RootElement.GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ListRecurringTemplates_GivenTemplates_WhenRequested_ThenReturnsInAscendingIdOrder()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await CreateRecurringTemplateAsync(client, "Second");
+        await CreateRecurringTemplateAsync(client, "First");
+
+        using var templates = JsonDocument.Parse(await client.GetStringAsync("/tasks/recurring"));
+
+        templates.RootElement.EnumerateArray().Select(x => x.GetProperty("id").GetInt64()).ShouldBe([1, 2]);
+    }
+
+    [Fact]
+    public async Task CompleteRecurringTask_GivenActiveInstance_WhenCompleteRequested_ThenCompletesInstanceAndCreatesNext()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var templateId = await CreateRecurringTemplateAsync(client);
+        var instanceId = await SingleOpenInstanceIdAsync(client);
+
+        var response = await client.PostAsync($"/tasks/recurring/{instanceId}/complete", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var completed = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        completed.RootElement.GetProperty("status").GetString().ShouldBe("done");
+        completed.RootElement.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+
+        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
+        var next = tasks.RootElement.EnumerateArray().Single();
+        next.GetProperty("title").GetString().ShouldBe("Team sync");
+        next.GetProperty("status").GetString().ShouldBe("active");
+        using var templates = JsonDocument.Parse(await client.GetStringAsync("/tasks/recurring"));
+        templates.RootElement.EnumerateArray().Single().GetProperty("id").GetInt64().ShouldBe(templateId);
+    }
+
+    [Fact]
+    public async Task CompleteRecurringTask_GivenNonRecurringTask_WhenCompleteRequested_ThenReturnsValidationError()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var id = await CreateTaskAsync(client);
+
+        var response = await client.PostAsync($"/tasks/recurring/{id}/complete", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        body.RootElement.GetProperty("errors").TryGetProperty("id", out _).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task PauseRecurringTask_GivenActiveTemplate_WhenPauseRequested_ThenPausesTemplateAndInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var templateId = await CreateRecurringTemplateAsync(client);
+
+        var response = await client.PostAsync($"/tasks/recurring/{templateId}/pause", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        template.RootElement.GetProperty("status").GetString().ShouldBe("paused");
+        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
+        tasks.RootElement.EnumerateArray().Single().GetProperty("status").GetString().ShouldBe("paused");
+    }
+
+    [Fact]
+    public async Task ResumeRecurringTask_GivenPausedTemplate_WhenResumeRequested_ThenResumesTemplateAndInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var templateId = await CreateRecurringTemplateAsync(client);
+        using var paused = await client.PostAsync($"/tasks/recurring/{templateId}/pause", null);
+
+        var response = await client.PostAsync($"/tasks/recurring/{templateId}/resume", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        template.RootElement.GetProperty("status").GetString().ShouldBe("active");
+        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
+        tasks.RootElement.EnumerateArray().Single().GetProperty("status").GetString().ShouldBe("active");
+    }
+
+    [Fact]
+    public async Task CancelRecurringTask_GivenActiveTemplate_WhenCancelRequested_ThenCancelsTemplateAndInstances()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var templateId = await CreateRecurringTemplateAsync(client);
+
+        var response = await client.PostAsync($"/tasks/recurring/{templateId}/cancel", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        template.RootElement.GetProperty("status").GetString().ShouldBe("cancelled");
+        template.RootElement.GetProperty("cancelledAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
+        tasks.RootElement.GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task PauseRecurringTask_GivenPausedTemplate_WhenPauseRequested_ThenReturnsValidationError()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var templateId = await CreateRecurringTemplateAsync(client);
+        using var paused = await client.PostAsync($"/tasks/recurring/{templateId}/pause", null);
+
+        var response = await client.PostAsync($"/tasks/recurring/{templateId}/pause", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        body.RootElement.GetProperty("errors").TryGetProperty("status", out _).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task RecurringTaskLifecycle_GivenMissingTemplate_WhenPauseRequested_ThenReturnsNotFound()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync("/tasks/recurring/42/pause", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    private static async Task<long> CreateRecurringTemplateAsync(HttpClient client, string title = "Team sync")
+    {
+        using var response = await client.PostAsJsonAsync("/tasks/recurring", new { title, startDate = FutureStartDate(), recurrence = new { every = 1, unit = "weeks" }, reminderPolicy = "once" });
+        using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return template.RootElement.GetProperty("id").GetInt64();
+    }
+
+    private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+
+    private static async Task<long> SingleOpenInstanceIdAsync(HttpClient client)
+    {
+        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
+        return tasks.RootElement.EnumerateArray().Single().GetProperty("id").GetInt64();
+    }
 }
 
 public sealed class ThrowingStore : ITaskStore
@@ -349,6 +547,7 @@ public sealed class ThrowingStore : ITaskStore
     public ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
     public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
     public ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
+    public ValueTask<IReadOnlyList<TaskItem>> GetByRecurringTaskIdAsync(long recurringTaskId, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
 }
 
 public sealed class CapturingLogger : ILogger
