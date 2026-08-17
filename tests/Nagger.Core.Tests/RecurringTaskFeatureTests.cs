@@ -220,13 +220,45 @@ public sealed class RecurringTaskFeatureTests
         next.RecurringTaskId.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task CompleteRecurringTask_GivenLateEveningCompletionInHelsinki_WhenCompleteRequested_ThenNextDueUsesLocalCompletionDate()
+    {
+        var helsinki = TimeZoneInfo.FindSystemTimeZoneById("Europe/Helsinki");
+        var now = new DateTimeOffset(2026, 8, 3, 22, 30, 0, TimeSpan.Zero);
+        var taskStore = new MemoryStore(new TaskItem(1, "Team sync", new DateTimeOffset(2026, 8, 4, 9, 0, 0, TimeSpan.FromHours(3)), ReminderPolicy.Once, default, default, Status: OneShotTaskStatus.Active, RecurringTaskId: 1));
+        var templateStore = new MemoryRecurringTemplateStore(new RecurringTaskTemplate(1, "Team sync", new DateOnly(2026, 8, 4), new RecurrenceRule(1, RecurrenceUnit.Weeks), ReminderPolicy.Once, RecurringTaskStatus.Active, default, default));
+        var handler = new CompleteRecurringTaskHandler(taskStore, new TestClock(now, helsinki), templateStore);
+
+        var completed = await handler.Handle(new(1), default);
+
+        completed.Status.ShouldBe(OneShotTaskStatus.Done);
+        var next = taskStore.Tasks.Single(x => x.Status == OneShotTaskStatus.Active);
+        next.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 11, 0, 0, 0, TimeSpan.FromHours(3)));
+    }
+
+    [Fact]
+    public async Task CompleteOneShotTask_GivenLateEveningCompletionInHelsinki_WhenCompleteRequested_ThenNextDueUsesLocalCompletionDate()
+    {
+        var helsinki = TimeZoneInfo.FindSystemTimeZoneById("Europe/Helsinki");
+        var now = new DateTimeOffset(2026, 8, 3, 22, 30, 0, TimeSpan.Zero);
+        var taskStore = new MemoryStore(new TaskItem(1, "Team sync", new DateTimeOffset(2026, 8, 4, 9, 0, 0, TimeSpan.FromHours(3)), ReminderPolicy.Once, default, default, Status: OneShotTaskStatus.Active, RecurringTaskId: 1));
+        var templateStore = new MemoryRecurringTemplateStore(new RecurringTaskTemplate(1, "Team sync", new DateOnly(2026, 8, 4), new RecurrenceRule(1, RecurrenceUnit.Weeks), ReminderPolicy.Once, RecurringTaskStatus.Active, default, default));
+        var handler = new CompleteOneShotTaskHandler(taskStore, new TestClock(now, helsinki), templateStore);
+
+        var completed = await handler.Handle(new(1), default);
+
+        completed.Status.ShouldBe(OneShotTaskStatus.Done);
+        var next = taskStore.Tasks.Single(x => x.Status == OneShotTaskStatus.Active);
+        next.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 11, 0, 0, 0, TimeSpan.FromHours(3)));
+    }
+
     private static RecurringTaskTemplate Template(long Id = 1, string title = "Team sync", RecurringTaskStatus status = RecurringTaskStatus.Active) =>
         new(Id, title, new DateOnly(2026, 8, 4), new RecurrenceRule(1, RecurrenceUnit.Weeks), ReminderPolicy.Once, status, default, default);
 
-    private sealed class TestClock : IClock
+    private sealed class TestClock(DateTimeOffset? utcNow = null, TimeZoneInfo? timeZone = null) : IClock
     {
-        public DateTimeOffset UtcNow => new(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
-        public TimeZoneInfo TimeZone => TimeZoneInfo.Utc;
+        public DateTimeOffset UtcNow => utcNow ?? new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
+        public TimeZoneInfo TimeZone => timeZone ?? TimeZoneInfo.Utc;
     }
 
     private sealed class MemoryStore(params TaskItem[] tasks) : ITaskStore

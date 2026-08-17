@@ -59,7 +59,7 @@ public sealed class McpTaskTools(IMediator mediator)
 
     [McpServerTool(Name = "complete_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse))]
     [Description("Use when the user says an active recurring-task instance is finished. Marks it done and schedules the next instance from the template's recurrence.")]
-    public Task<CallToolResult> CompleteRecurringTask([Description("Identifier of the recurring-task instance returned by list_recurring_tasks or the morning report.")] long id, CancellationToken cancellationToken) =>
+    public Task<CallToolResult> CompleteRecurringTask([Description("Identifier of the recurring-task instance returned by list_one_shot_tasks or the morning report.")] long id, CancellationToken cancellationToken) =>
         Run(async () => McpTaskResponse.From(await mediator.Send(new CompleteRecurringTaskCommand(id), cancellationToken)));
 
     [McpServerTool(Name = "pause_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse))]
@@ -78,7 +78,7 @@ public sealed class McpTaskTools(IMediator mediator)
         Run(async () => McpRecurringTemplateResponse.From(await mediator.Send(new CancelRecurringTaskCommand(id), cancellationToken)));
 
     [McpServerTool(Name = "list_recurring_tasks", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse[]))]
-    [Description("Use to discover recurring task templates. Each returned id is the identifier required by recurring lifecycle tools.")]
+    [Description("Use to discover recurring task templates. Each returned id is the identifier required by pause, resume, and cancel recurring lifecycle tools. To complete an instance, use list_one_shot_tasks or the morning report to get the instance id.")]
     public Task<CallToolResult> ListRecurringTasks(CancellationToken cancellationToken) =>
         Run(async () => (await mediator.Send(new ListRecurringTemplatesQuery(), cancellationToken)).Select(McpRecurringTemplateResponse.From).ToArray());
 
