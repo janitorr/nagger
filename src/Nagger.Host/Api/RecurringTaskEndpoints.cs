@@ -19,7 +19,7 @@ public static class RecurringTaskEndpoints
             Results.Ok((await mediator.Send(new ListRecurringTemplatesQuery(), cancellationToken)).Select(RecurringTemplateResponse.From).ToList()));
 
         group.MapPost("{id:long}/complete", async (long id, IMediator mediator, CancellationToken cancellationToken) =>
-            Results.Ok(TaskResponse.From(await mediator.Send(new CompleteRecurringTaskCommand(id), cancellationToken))));
+            Results.Ok(RecurringTaskInstanceResponse.From(await mediator.Send(new CompleteRecurringTaskCommand(id), cancellationToken))));
 
         group.MapPost("{id:long}/pause", async (long id, IMediator mediator, CancellationToken cancellationToken) =>
             Results.Ok(RecurringTemplateResponse.From(await mediator.Send(new PauseRecurringTaskCommand(id), cancellationToken))));
@@ -56,3 +56,30 @@ public sealed record RecurringTemplateResponse(
 }
 
 public sealed record RecurrenceRuleResponse(int Every, string Unit);
+
+public sealed record RecurringTaskInstanceResponse(
+    long Id,
+    long RecurringTaskId,
+    string Title,
+    string Type,
+    string Status,
+    DateTimeOffset DueAt,
+    string ReminderPolicy,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset? CancelledAt)
+{
+    public static RecurringTaskInstanceResponse From(RecurringTaskInstance instance) => new(
+        instance.Id,
+        instance.RecurringTaskId,
+        instance.Title,
+        "recurring",
+        instance.Status.ToContractValue(),
+        instance.DueAt,
+        instance.ReminderPolicy.ToContractValue(),
+        instance.CreatedAt,
+        instance.UpdatedAt,
+        instance.CompletedAt,
+        instance.CancelledAt);
+}

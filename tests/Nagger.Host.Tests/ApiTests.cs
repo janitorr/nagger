@@ -81,10 +81,11 @@ public sealed class ApiTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var report = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("2");
+        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("3");
         report.RootElement.GetProperty("generatedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
         report.RootElement.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
         var item = report.RootElement.GetProperty("items")[0];
+        item.GetProperty("type").GetString().ShouldBe("one-shot");
         item.GetProperty("dueAt").GetString().ShouldBe("2026-08-04T09:00:00+03:00");
         item.GetProperty("dueState").GetString().ShouldBe("due_today");
         item.GetProperty("daysOverdue").ValueKind.ShouldBe(JsonValueKind.Null);
@@ -379,9 +380,12 @@ public sealed class ApiTests
         template.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
 
         using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
-        var instance = tasks.RootElement.EnumerateArray().Single();
-        instance.GetProperty("title").GetString().ShouldBe("Team sync");
-        instance.GetProperty("status").GetString().ShouldBe("active");
+        tasks.RootElement.GetArrayLength().ShouldBe(0);
+        using var scope = factory.Services.CreateScope();
+        var instance = await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync();
+        instance.Title.ShouldBe("Team sync");
+        instance.Status.ShouldBe("active");
+        instance.RecurringTaskId.ShouldBe(1);
     }
 
     [Fact]
@@ -429,40 +433,37 @@ public sealed class ApiTests
     }
 
     [Fact]
-    public async Task CompleteRecurringTask_GivenActiveInstance_WhenCompleteRequested_ThenCompletesInstanceAndCreatesNext()
+    public async Task CompleteRecurringTask_GivenTemplateWithActiveInstance_WhenCompleteRequested_ThenCompletesInstanceAndCreatesNext()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
         var templateId = await CreateRecurringTemplateAsync(client);
-        var instanceId = await SingleOpenInstanceIdAsync(client);
 
-        var response = await client.PostAsync($"/tasks/recurring/{instanceId}/complete", null);
+        var response = await client.PostAsync($"/tasks/recurring/{templateId}/complete", null);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var completed = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         completed.RootElement.GetProperty("status").GetString().ShouldBe("done");
+        completed.RootElement.GetProperty("type").GetString().ShouldBe("recurring");
+        completed.RootElement.GetProperty("recurringTaskId").GetInt64().ShouldBe(templateId);
         completed.RootElement.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
 
-        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
-        var next = tasks.RootElement.EnumerateArray().Single();
-        next.GetProperty("title").GetString().ShouldBe("Team sync");
-        next.GetProperty("status").GetString().ShouldBe("active");
-        using var templates = JsonDocument.Parse(await client.GetStringAsync("/tasks/recurring"));
-        templates.RootElement.EnumerateArray().Single().GetProperty("id").GetInt64().ShouldBe(templateId);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
+        (await db.RecurringTaskInstances.CountAsync()).ShouldBe(2);
+        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "active")).Title.ShouldBe("Team sync");
+        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "done")).CompletedAt.ShouldNotBeNull();
     }
 
     [Fact]
-    public async Task CompleteRecurringTask_GivenNonRecurringTask_WhenCompleteRequested_ThenReturnsValidationError()
+    public async Task CompleteRecurringTask_GivenMissingTemplate_WhenCompleteRequested_ThenReturnsNotFound()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
-        var id = await CreateTaskAsync(client);
 
-        var response = await client.PostAsync($"/tasks/recurring/{id}/complete", null);
+        var response = await client.PostAsync("/tasks/recurring/42/complete", null);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        body.RootElement.GetProperty("errors").TryGetProperty("id", out _).ShouldBeTrue();
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -477,8 +478,8 @@ public sealed class ApiTests
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         template.RootElement.GetProperty("status").GetString().ShouldBe("paused");
-        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
-        tasks.RootElement.EnumerateArray().Single().GetProperty("status").GetString().ShouldBe("paused");
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("paused");
     }
 
     [Fact]
@@ -494,8 +495,8 @@ public sealed class ApiTests
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         template.RootElement.GetProperty("status").GetString().ShouldBe("active");
-        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
-        tasks.RootElement.EnumerateArray().Single().GetProperty("status").GetString().ShouldBe("active");
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("active");
     }
 
     [Fact]
@@ -511,8 +512,8 @@ public sealed class ApiTests
         using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         template.RootElement.GetProperty("status").GetString().ShouldBe("cancelled");
         template.RootElement.GetProperty("cancelledAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
-        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
-        tasks.RootElement.GetArrayLength().ShouldBe(0);
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("cancelled");
     }
 
     [Fact]
@@ -549,12 +550,6 @@ public sealed class ApiTests
     }
 
     private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
-
-    private static async Task<long> SingleOpenInstanceIdAsync(HttpClient client)
-    {
-        using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
-        return tasks.RootElement.EnumerateArray().Single().GetProperty("id").GetInt64();
-    }
 }
 
 public sealed class ThrowingStore : ITaskStore
@@ -564,7 +559,6 @@ public sealed class ThrowingStore : ITaskStore
     public ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
     public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
     public ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
-    public ValueTask<IReadOnlyList<TaskItem>> GetByRecurringTaskIdAsync(long recurringTaskId, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
 }
 
 public sealed class CapturingLogger : ILogger

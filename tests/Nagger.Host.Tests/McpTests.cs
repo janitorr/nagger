@@ -201,9 +201,10 @@ public sealed class McpTests
         using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
         var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        report.GetProperty("schemaVersion").GetString().ShouldBe("2");
+        report.GetProperty("schemaVersion").GetString().ShouldBe("3");
         report.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
         var item = report.GetProperty("items")[0];
+        item.GetProperty("type").GetString().ShouldBe("one-shot");
         item.GetProperty("dueState").GetString().ShouldBe("due_today");
         item.GetProperty("daysOverdue").ValueKind.ShouldBe(JsonValueKind.Null);
         item.GetProperty("daysUntilDue").ValueKind.ShouldBe(JsonValueKind.Null);
@@ -220,7 +221,7 @@ public sealed class McpTests
         using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
         var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        report.GetProperty("schemaVersion").GetString().ShouldBe("2");
+        report.GetProperty("schemaVersion").GetString().ShouldBe("3");
         report.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(1);
         var item = report.GetProperty("items")[0];
         item.GetProperty("dueState").GetString().ShouldBe("upcoming");
@@ -316,22 +317,37 @@ public sealed class McpTests
     }
 
     [Fact]
-    public async Task Mcp_GivenActiveRecurringInstance_WhenCompleteRequested_ThenCompletesAndCreatesNextInstance()
+    public async Task Mcp_GivenActiveRecurringTemplate_WhenCompleteRequested_ThenCompletesInstanceAndCreatesNext()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
-        await CreateRecurringTaskAsync(client, session, 2);
-        var instanceId = await SingleRecurringInstanceIdAsync(client, session, 3);
+        var templateId = await CreateRecurringTaskAsync(client, session, 2);
 
-        using var response = await SendMcpAsync(client, session, 4, "tools/call", new { name = "complete_recurring_task", arguments = new { id = instanceId } });
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "complete_recurring_task", arguments = new { id = templateId } });
         var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         task.GetProperty("status").GetString().ShouldBe("done");
+        task.GetProperty("type").GetString().ShouldBe("recurring");
+        task.GetProperty("recurringTaskId").GetInt64().ShouldBe(templateId);
         task.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
 
-        var remaining = await SendMcpAsync(client, session, 5, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
-        remaining.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("title").GetString().ShouldBe("Team sync");
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
+        (await db.RecurringTaskInstances.CountAsync()).ShouldBe(2);
+        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "active")).Title.ShouldBe("Team sync");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenMissingRecurringTemplate_WhenCompleteRequested_ThenReturnsError()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(client, session, 2, "tools/call", new { name = "complete_recurring_task", arguments = new { id = 42 } });
+
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
     }
 
     [Fact]
@@ -347,8 +363,8 @@ public sealed class McpTests
 
         template.GetProperty("status").GetString().ShouldBe("paused");
 
-        var tasks = await SendMcpAsync(client, session, 4, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
-        tasks.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("status").GetString().ShouldBe("paused");
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("paused");
     }
 
     [Fact]
@@ -365,8 +381,8 @@ public sealed class McpTests
 
         template.GetProperty("status").GetString().ShouldBe("active");
 
-        var tasks = await SendMcpAsync(client, session, 5, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
-        tasks.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("status").GetString().ShouldBe("active");
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("active");
     }
 
     [Fact]
@@ -428,12 +444,6 @@ public sealed class McpTests
     }
 
     private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
-
-    private static async Task<long> SingleRecurringInstanceIdAsync(HttpClient client, McpSession session, int requestId)
-    {
-        using var response = await SendMcpAsync(client, session, requestId, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
-        return response.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("id").GetInt64();
-    }
 
     private static async Task<long> CreateTaskAsync(HttpClient client, McpSession session, string title = "Task", int requestId = 2, string dueAt = "2026-08-04T09:00:00+03:00")
     {

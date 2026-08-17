@@ -2,49 +2,49 @@ using Mediator;
 
 namespace Nagger.Core.Tasks;
 
-public sealed record CompleteRecurringTaskCommand(long Id) : ICommand<TaskItem>;
+public sealed record CompleteRecurringTaskCommand(long Id) : ICommand<RecurringTaskInstance>;
 public sealed record PauseRecurringTaskCommand(long Id) : ICommand<RecurringTaskTemplate>;
 public sealed record ResumeRecurringTaskCommand(long Id) : ICommand<RecurringTaskTemplate>;
 public sealed record CancelRecurringTaskCommand(long Id) : ICommand<RecurringTaskTemplate>;
 
-public sealed class CompleteRecurringTaskHandler(ITaskStore store, IClock clock, IRecurringTaskTemplateStore recurringStore)
-    : ICommandHandler<CompleteRecurringTaskCommand, TaskItem>
+public sealed class CompleteRecurringTaskHandler(IRecurringTaskTemplateStore recurringStore, IRecurringTaskInstanceStore instanceStore, IClock clock)
+    : ICommandHandler<CompleteRecurringTaskCommand, RecurringTaskInstance>
 {
-    public async ValueTask<TaskItem> Handle(CompleteRecurringTaskCommand command, CancellationToken cancellationToken)
+    public async ValueTask<RecurringTaskInstance> Handle(CompleteRecurringTaskCommand command, CancellationToken cancellationToken)
     {
-        var task = await store.GetByIdAsync(command.Id, cancellationToken) ?? throw new TaskNotFoundException(command.Id);
+        var template = await recurringStore.GetByIdAsync(command.Id, cancellationToken)
+            ?? throw new RecurringTaskNotFoundException(command.Id);
 
-        if (!task.RecurringTaskId.HasValue)
-            throw new ValidationException(new Dictionary<string, string[]> { ["id"] = ["Task is not a recurring instance."] });
+        var instances = await instanceStore.GetByTemplateIdAsync(command.Id, cancellationToken);
+        var current = instances.FirstOrDefault(x => x.Status == RecurringTaskInstanceStatus.Active);
+        if (current is null)
+            throw new ValidationException(new Dictionary<string, string[]> { ["status"] = ["Recurring task has no active instance to complete."] });
 
-        var updated = task.Complete(clock.UtcNow);
-        await store.UpdateAsync(updated, cancellationToken);
+        var completed = current.Complete(clock.UtcNow);
+        await instanceStore.UpdateAsync(completed, cancellationToken);
 
-        var template = await recurringStore.GetByIdAsync(task.RecurringTaskId.Value, cancellationToken)
-            ?? throw new RecurringTaskNotFoundException(task.RecurringTaskId.Value);
-
-        var completedLocal = TimeZoneInfo.ConvertTime(updated.CompletedAt!.Value, clock.TimeZone);
+        var completedLocal = TimeZoneInfo.ConvertTime(completed.CompletedAt!.Value, clock.TimeZone);
         var nextDueDate = RecurrenceCalculator.CalculateNextDue(
             DateOnly.FromDateTime(completedLocal.Date),
             template.Recurrence);
 
-        var nextInstance = new TaskItem(
+        var nextInstance = new RecurringTaskInstance(
             Id: 0,
+            RecurringTaskId: template.Id,
             Title: template.Title,
             DueAt: nextDueDate.ToDateTimeOffset(clock.TimeZone),
             ReminderPolicy: template.ReminderPolicy,
             CreatedAt: clock.UtcNow,
             UpdatedAt: clock.UtcNow,
-            Status: OneShotTaskStatus.Active,
-            RecurringTaskId: template.Id);
+            Status: RecurringTaskInstanceStatus.Active);
 
-        await store.AddAsync(nextInstance, cancellationToken);
+        await instanceStore.AddAsync(nextInstance, cancellationToken);
 
-        return updated;
+        return completed;
     }
 }
 
-public sealed class PauseRecurringTaskHandler(IRecurringTaskTemplateStore recurringStore, ITaskStore taskStore, IClock clock)
+public sealed class PauseRecurringTaskHandler(IRecurringTaskTemplateStore recurringStore, IRecurringTaskInstanceStore instanceStore, IClock clock)
     : ICommandHandler<PauseRecurringTaskCommand, RecurringTaskTemplate>
 {
     public async ValueTask<RecurringTaskTemplate> Handle(PauseRecurringTaskCommand command, CancellationToken cancellationToken)
@@ -55,16 +55,16 @@ public sealed class PauseRecurringTaskHandler(IRecurringTaskTemplateStore recurr
         var updated = template.Pause(clock.UtcNow);
         await recurringStore.UpdateAsync(updated, cancellationToken);
 
-        var instances = await taskStore.GetByRecurringTaskIdAsync(command.Id, cancellationToken);
-        var current = instances.FirstOrDefault(x => x.Status == OneShotTaskStatus.Active);
+        var instances = await instanceStore.GetByTemplateIdAsync(command.Id, cancellationToken);
+        var current = instances.FirstOrDefault(x => x.Status == RecurringTaskInstanceStatus.Active);
         if (current is not null)
-            await taskStore.UpdateAsync(current.Pause(clock.UtcNow), cancellationToken);
+            await instanceStore.UpdateAsync(current.Pause(clock.UtcNow), cancellationToken);
 
         return updated;
     }
 }
 
-public sealed class ResumeRecurringTaskHandler(IRecurringTaskTemplateStore recurringStore, ITaskStore taskStore, IClock clock)
+public sealed class ResumeRecurringTaskHandler(IRecurringTaskTemplateStore recurringStore, IRecurringTaskInstanceStore instanceStore, IClock clock)
     : ICommandHandler<ResumeRecurringTaskCommand, RecurringTaskTemplate>
 {
     public async ValueTask<RecurringTaskTemplate> Handle(ResumeRecurringTaskCommand command, CancellationToken cancellationToken)
@@ -75,16 +75,16 @@ public sealed class ResumeRecurringTaskHandler(IRecurringTaskTemplateStore recur
         var updated = template.Resume(clock.UtcNow);
         await recurringStore.UpdateAsync(updated, cancellationToken);
 
-        var instances = await taskStore.GetByRecurringTaskIdAsync(command.Id, cancellationToken);
-        var current = instances.FirstOrDefault(x => x.Status == OneShotTaskStatus.Paused);
+        var instances = await instanceStore.GetByTemplateIdAsync(command.Id, cancellationToken);
+        var current = instances.FirstOrDefault(x => x.Status == RecurringTaskInstanceStatus.Paused);
         if (current is not null)
-            await taskStore.UpdateAsync(current.Resume(clock.UtcNow), cancellationToken);
+            await instanceStore.UpdateAsync(current.Resume(clock.UtcNow), cancellationToken);
 
         return updated;
     }
 }
 
-public sealed class CancelRecurringTaskHandler(IRecurringTaskTemplateStore recurringStore, ITaskStore taskStore, IClock clock)
+public sealed class CancelRecurringTaskHandler(IRecurringTaskTemplateStore recurringStore, IRecurringTaskInstanceStore instanceStore, IClock clock)
     : ICommandHandler<CancelRecurringTaskCommand, RecurringTaskTemplate>
 {
     public async ValueTask<RecurringTaskTemplate> Handle(CancelRecurringTaskCommand command, CancellationToken cancellationToken)
@@ -95,9 +95,9 @@ public sealed class CancelRecurringTaskHandler(IRecurringTaskTemplateStore recur
         var updated = template.Cancel(clock.UtcNow);
         await recurringStore.UpdateAsync(updated, cancellationToken);
 
-        var instances = await taskStore.GetByRecurringTaskIdAsync(command.Id, cancellationToken);
-        foreach (var instance in instances.Where(x => x.Status is OneShotTaskStatus.Active or OneShotTaskStatus.Paused))
-            await taskStore.UpdateAsync(instance.Cancel(clock.UtcNow), cancellationToken);
+        var instances = await instanceStore.GetByTemplateIdAsync(command.Id, cancellationToken);
+        foreach (var instance in instances.Where(x => x.Status is RecurringTaskInstanceStatus.Active or RecurringTaskInstanceStatus.Paused))
+            await instanceStore.UpdateAsync(instance.Cancel(clock.UtcNow), cancellationToken);
 
         return updated;
     }
