@@ -23,6 +23,12 @@ endpoint exposes these tools:
 | `resume_one_shot_task` | Resume a paused reminder by `id`. |
 | `cancel_one_shot_task` | Cancel an active or paused reminder by `id`. |
 | `list_one_shot_tasks` | Discover active and paused reminders and their lifecycle-tool `id` values. |
+| `create_recurring_task` | Create a recurring template from `title`, `startDate`, `recurrenceEvery`, `recurrenceUnit`, and `reminderPolicy`. |
+| `complete_recurring_task` | Complete a recurring-task instance by `id`; schedules the next instance. |
+| `pause_recurring_task` | Pause a recurring template and its current instance by template `id`. |
+| `resume_recurring_task` | Resume a paused recurring template and its current instance by template `id`. |
+| `cancel_recurring_task` | Cancel a recurring template and all its instances by template `id`. |
+| `list_recurring_tasks` | Discover recurring templates and their lifecycle-tool `id` values. |
 | `get_morning_report` | Read the morning report for a `YYYY-MM-DD` `date`. |
 
 Tool results contain structured task and report data using the same fields as
@@ -106,6 +112,80 @@ reminders exist, the response is `[]`.
 
 ```bash
 curl http://localhost:5246/tasks/one-shot
+```
+
+## Recurring Tasks
+
+Recurring tasks are templates that repeatedly generate one-shot task instances. Creating a template immediately creates the first instance due on the start date; completing an instance schedules the next one. Templates themselves never appear in reports — only their generated instances do.
+
+### Create A Recurring Template
+
+`POST /tasks/recurring`
+
+Request payload:
+
+```json
+{
+  "title": "Team sync",
+  "startDate": "2026-08-06",
+  "recurrence": {
+    "every": 1,
+    "unit": "weeks"
+  },
+  "reminderPolicy": "once"
+}
+```
+
+Required fields:
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| `title` | string | Nonempty; surrounding whitespace is trimmed. |
+| `startDate` | string | YYYY-MM-DD date, not in the past. |
+| `recurrence.every` | integer | Positive interval between recurrences. |
+| `recurrence.unit` | string | One of `days`, `weeks`, or `months`. |
+| `reminderPolicy` | string | One of `none`, `once`, or `weekly-until-done`. |
+
+Successful response: `201 Created`
+
+```json
+{
+  "id": 1,
+  "title": "Team sync",
+  "startDate": "2026-08-06",
+  "recurrence": {
+    "every": 1,
+    "unit": "weeks"
+  },
+  "reminderPolicy": "once",
+  "status": "active",
+  "createdAt": "2026-08-03T10:00:00+00:00",
+  "updatedAt": "2026-08-03T10:00:00+00:00",
+  "cancelledAt": null
+}
+```
+
+### Manage A Recurring Template Or Instance
+
+These endpoints have no request body and return `200 OK` with the affected representation.
+
+| Action | Endpoint | `id` refers to | Result |
+| --- | --- | --- | --- |
+| Complete | `POST /tasks/recurring/{id}/complete` | the instance id | Marks the instance done and creates the next instance (completion date + interval). Returns the completed instance. |
+| Pause | `POST /tasks/recurring/{id}/pause` | the template id | Sets the template to `paused` and pauses its current instance. Returns the template. |
+| Resume | `POST /tasks/recurring/{id}/resume` | the template id | Sets the template back to `active` and resumes its current instance. Returns the template. |
+| Cancel | `POST /tasks/recurring/{id}/cancel` | the template id | Sets the template to `cancelled`, sets `cancelledAt`, and cancels all its open instances. Returns the template. |
+
+Completing a non-recurring task, pausing a paused template, or resuming an active template returns a `400 Bad Request` validation error. An unknown instance or template id returns `404 Not Found`.
+
+### List Recurring Templates
+
+`GET /tasks/recurring`
+
+Returns `200 OK` with an array of template representations ordered by ascending `id`; `[]` when none exist. Use the returned `id` as the template id for lifecycle actions, and `/tasks/one-shot` to discover the generated instance ids.
+
+```bash
+curl http://localhost:5246/tasks/recurring
 ```
 
 ## Get A Morning Report
