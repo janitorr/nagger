@@ -36,6 +36,7 @@ app.Use(async (context, next) =>
 });
 
 app.MapTaskEndpoints();
+app.MapRecurringTaskEndpoints();
 app.MapReportEndpoints();
 app.MapMcp("/mcp");
 

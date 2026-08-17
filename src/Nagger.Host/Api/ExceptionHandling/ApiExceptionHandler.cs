@@ -21,6 +21,12 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             return true;
         }
 
+        if (exception is RecurringTaskNotFoundException)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return true;
+        }
+
         AppLog.UnexpectedFailure(logger, context.Request.Path, exception.GetType().Name);
         await Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "An unexpected error occurred.")
             .ExecuteAsync(context);
