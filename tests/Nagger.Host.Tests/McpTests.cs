@@ -251,6 +251,167 @@ public sealed class McpTests
         (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()).Status.ShouldBe("paused");
     }
 
+    [Fact]
+    public async Task Mcp_GivenInitializedSession_WhenToolsListed_ThenAdvertisesRecurringTools()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
+        var names = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString()).ToList();
+
+        names.ShouldContain("create_recurring_task");
+        names.ShouldContain("complete_recurring_task");
+        names.ShouldContain("pause_recurring_task");
+        names.ShouldContain("resume_recurring_task");
+        names.ShouldContain("cancel_recurring_task");
+        names.ShouldContain("list_recurring_tasks");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenValidRecurringInput_WhenCreateRequested_ThenCreatesTemplateAndFirstInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var startDate = FutureStartDate();
+
+        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
+        {
+            name = "create_recurring_task",
+            arguments = new { title = "Team sync", startDate, recurrenceEvery = 1, recurrenceUnit = "weeks", reminderPolicy = "once" }
+        });
+        var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        template.GetProperty("id").GetInt64().ShouldBe(1);
+        template.GetProperty("status").GetString().ShouldBe("active");
+        template.GetProperty("startDate").GetString().ShouldBe(startDate);
+        template.GetProperty("recurrence").GetProperty("every").GetInt32().ShouldBe(1);
+        template.GetProperty("recurrence").GetProperty("unit").GetString().ShouldBe("weeks");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenActiveRecurringInstance_WhenCompleteRequested_ThenCompletesAndCreatesNextInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await CreateRecurringTaskAsync(client, session, 2);
+        var instanceId = await SingleRecurringInstanceIdAsync(client, session, 3);
+
+        using var response = await SendMcpAsync(client, session, 4, "tools/call", new { name = "complete_recurring_task", arguments = new { id = instanceId } });
+        var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        task.GetProperty("status").GetString().ShouldBe("done");
+        task.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+
+        var remaining = await SendMcpAsync(client, session, 5, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
+        remaining.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("title").GetString().ShouldBe("Team sync");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenRecurringTemplate_WhenPauseRequested_ThenPausesTemplateAndInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var templateId = await CreateRecurringTaskAsync(client, session, 2);
+
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_recurring_task", arguments = new { id = templateId } });
+        var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        template.GetProperty("status").GetString().ShouldBe("paused");
+
+        var tasks = await SendMcpAsync(client, session, 4, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
+        tasks.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("status").GetString().ShouldBe("paused");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenPausedRecurringTemplate_WhenResumeRequested_ThenResumesTemplateAndInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var templateId = await CreateRecurringTaskAsync(client, session, 2);
+        using var paused = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_recurring_task", arguments = new { id = templateId } });
+
+        using var response = await SendMcpAsync(client, session, 4, "tools/call", new { name = "resume_recurring_task", arguments = new { id = templateId } });
+        var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        template.GetProperty("status").GetString().ShouldBe("active");
+
+        var tasks = await SendMcpAsync(client, session, 5, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
+        tasks.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("status").GetString().ShouldBe("active");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenRecurringTemplate_WhenCancelRequested_ThenCancelsTemplate()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        var templateId = await CreateRecurringTaskAsync(client, session, 2);
+
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "cancel_recurring_task", arguments = new { id = templateId } });
+        var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        template.GetProperty("status").GetString().ShouldBe("cancelled");
+        template.GetProperty("cancelledAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenRecurringTemplates_WhenListRequested_ThenReturnsTemplates()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await CreateRecurringTaskAsync(client, session, 2);
+
+        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "list_recurring_tasks", arguments = new { } });
+        var templates = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        templates.EnumerateArray().Select(x => x.GetProperty("id").GetInt64()).ShouldBe([1]);
+        templates[0].GetProperty("status").GetString().ShouldBe("active");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenInvalidRecurringInput_WhenCreateRequested_ThenReturnsErrorWithoutPersisting()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
+        {
+            name = "create_recurring_task",
+            arguments = new { title = "", startDate = "not-a-date", recurrenceEvery = 0, recurrenceUnit = "hourly", reminderPolicy = "daily" }
+        });
+
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskTemplates.CountAsync()).ShouldBe(0);
+    }
+
+    private static async Task<long> CreateRecurringTaskAsync(HttpClient client, McpSession session, int requestId)
+    {
+        using var response = await SendMcpAsync(client, session, requestId, "tools/call", new
+        {
+            name = "create_recurring_task",
+            arguments = new { title = "Team sync", startDate = FutureStartDate(), recurrenceEvery = 1, recurrenceUnit = "weeks", reminderPolicy = "once" }
+        });
+        return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
+    }
+
+    private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+
+    private static async Task<long> SingleRecurringInstanceIdAsync(HttpClient client, McpSession session, int requestId)
+    {
+        using var response = await SendMcpAsync(client, session, requestId, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
+        return response.RootElement.GetProperty("result").GetProperty("structuredContent").EnumerateArray().Single().GetProperty("id").GetInt64();
+    }
+
     private static async Task<long> CreateTaskAsync(HttpClient client, McpSession session, string title = "Task", int requestId = 2)
     {
         using var response = await SendMcpAsync(client, session, requestId, "tools/call", new
