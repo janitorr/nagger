@@ -26,9 +26,10 @@ public sealed class CompleteOneShotTaskHandler(ITaskStore store, IClock clock, I
             var template = await recurringStore.GetByIdAsync(task.RecurringTaskId.Value, cancellationToken)
                 ?? throw new RecurringTaskNotFoundException(task.RecurringTaskId.Value);
 
-            // Calculate next due date
+            // Calculate next due date from the completion date in the configured timezone
+            var completedLocal = TimeZoneInfo.ConvertTime(updated.CompletedAt!.Value, clock.TimeZone);
             var nextDueDate = RecurrenceCalculator.CalculateNextDue(
-                DateOnly.FromDateTime(updated.CompletedAt!.Value.Date),
+                DateOnly.FromDateTime(completedLocal.Date),
                 template.Recurrence);
 
             // Create next instance

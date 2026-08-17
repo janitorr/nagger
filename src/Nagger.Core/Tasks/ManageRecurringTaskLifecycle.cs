@@ -23,8 +23,9 @@ public sealed class CompleteRecurringTaskHandler(ITaskStore store, IClock clock,
         var template = await recurringStore.GetByIdAsync(task.RecurringTaskId.Value, cancellationToken)
             ?? throw new RecurringTaskNotFoundException(task.RecurringTaskId.Value);
 
+        var completedLocal = TimeZoneInfo.ConvertTime(updated.CompletedAt!.Value, clock.TimeZone);
         var nextDueDate = RecurrenceCalculator.CalculateNextDue(
-            DateOnly.FromDateTime(updated.CompletedAt!.Value.Date),
+            DateOnly.FromDateTime(completedLocal.Date),
             template.Recurrence);
 
         var nextInstance = new TaskItem(
