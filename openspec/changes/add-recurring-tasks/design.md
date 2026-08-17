@@ -57,18 +57,14 @@ Nagger currently has a complete one-shot task system with separate Core and Host
 **Rationale:** Ensures the first due date is visible in reports immediately. Matches your preference for Option A.
 
 ### Instance Completion via One-Shot Endpoint
-**Decision:** Completing a recurring-generated instance uses the existing one-shot complete endpoint, which then triggers next instance creation.
+**Decision:** The existing one-shot complete endpoint (`POST /tasks/{id}/complete`) detects recurring-generated instances and, on completion, creates the next instance using the template's recurrence.
 
-**Rationale:** 
-- LLM uses MCP to mark tasks done (per your input)
-- One-shot complete endpoint handles the instance completion
-- Modified to detect recurring instances and create next one
+**Rationale:** The one-shot lifecycle spec requires completing a recurring instance through the existing complete endpoint to spawn the next instance, keeping the LLM's mark-done flow unchanged.
 
-**Wait - this violates separation!** Actually, this requires the one-shot handler to know about recurring templates. Let me reconsider...
+### Separate Recurring Complete Endpoint
+**Decision:** Additionally expose `POST /tasks/recurring/{id}/complete`, which completes a recurring instance and rejects tasks that are not recurring instances with a validation error.
 
-**Revised Decision:** Use separate endpoints for recurring instance completion.
-
-**Rationale:** Maintains true separation. One-shot complete endpoint only handles true one-shot tasks. Recurring instances are completed via `/tasks/recurring/{id}/complete`.
+**Rationale:** Provides a dedicated recurring path that validates the instance belongs to a recurring template, while the one-shot endpoint keeps serving true one-shot tasks.
 
 ### Pause/Resume/Cancel Behavior
 **Decision:** 
