@@ -1,6 +1,6 @@
 ## Purpose
 
-Enable users to create recurring task templates that automatically generate one-shot task instances for repeated obligations.
+Enable users to create recurring task templates that automatically generate recurring task instances for repeated obligations.
 
 ## Requirements
 
