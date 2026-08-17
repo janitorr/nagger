@@ -25,6 +25,14 @@ public static class ReminderPolicies
         _ => throw new ArgumentOutOfRangeException(nameof(policy))
     };
 
+    public static ReminderPolicy FromContractValue(string value) => value switch
+    {
+        "none" => ReminderPolicy.None,
+        "once" => ReminderPolicy.Once,
+        "weekly-until-done" => ReminderPolicy.WeeklyUntilDone,
+        _ => throw new ArgumentOutOfRangeException(nameof(value))
+    };
+
     private static bool Set(ReminderPolicy value, out ReminderPolicy policy, bool success = true)
     {
         policy = value;

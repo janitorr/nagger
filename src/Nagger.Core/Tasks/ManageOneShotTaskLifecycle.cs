@@ -12,13 +12,39 @@ public sealed class TaskNotFoundException(long id) : Exception($"Task {id} was n
     public long Id { get; } = id;
 }
 
-public sealed class CompleteOneShotTaskHandler(ITaskStore store, IClock clock) : ICommandHandler<CompleteOneShotTaskCommand, TaskItem>
+public sealed class CompleteOneShotTaskHandler(ITaskStore store, IClock clock, IRecurringTaskTemplateStore recurringStore) : ICommandHandler<CompleteOneShotTaskCommand, TaskItem>
 {
     public async ValueTask<TaskItem> Handle(CompleteOneShotTaskCommand command, CancellationToken cancellationToken)
     {
         var task = await store.GetByIdAsync(command.Id, cancellationToken) ?? throw new TaskNotFoundException(command.Id);
         var updated = task.Complete(clock.UtcNow);
         await store.UpdateAsync(updated, cancellationToken);
+
+        // Handle recurring task instance completion
+        if (task.RecurringTaskId.HasValue)
+        {
+            var template = await recurringStore.GetByIdAsync(task.RecurringTaskId.Value, cancellationToken)
+                ?? throw new RecurringTaskNotFoundException(task.RecurringTaskId.Value);
+
+            // Calculate next due date
+            var nextDueDate = RecurrenceCalculator.CalculateNextDue(
+                DateOnly.FromDateTime(updated.CompletedAt!.Value.Date),
+                template.Recurrence);
+
+            // Create next instance
+            var nextInstance = new TaskItem(
+                Id: 0,
+                Title: template.Title,
+                DueAt: nextDueDate.ToDateTimeOffset(clock.TimeZone),
+                ReminderPolicy: template.ReminderPolicy,
+                CreatedAt: clock.UtcNow,
+                UpdatedAt: clock.UtcNow,
+                Status: OneShotTaskStatus.Active,
+                RecurringTaskId: template.Id);
+
+            await store.AddAsync(nextInstance, cancellationToken);
+        }
+
         return updated;
     }
 }
