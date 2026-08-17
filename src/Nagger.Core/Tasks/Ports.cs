@@ -11,6 +11,19 @@ public interface ITaskStore
     ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken);
 
     ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken);
+
+    ValueTask<IReadOnlyList<TaskItem>> GetByRecurringTaskIdAsync(long recurringTaskId, CancellationToken cancellationToken);
+}
+
+public interface IRecurringTaskTemplateStore
+{
+    ValueTask<RecurringTaskTemplate> AddAsync(RecurringTaskTemplate template, CancellationToken cancellationToken);
+
+    ValueTask<RecurringTaskTemplate?> GetByIdAsync(long id, CancellationToken cancellationToken);
+
+    ValueTask UpdateAsync(RecurringTaskTemplate template, CancellationToken cancellationToken);
+
+    ValueTask<IReadOnlyList<RecurringTaskTemplate>> GetAllAsync(CancellationToken cancellationToken);
 }
 
 public interface IClock

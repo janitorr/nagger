@@ -10,7 +10,8 @@ public sealed record TaskItem(
     DateTimeOffset? LastReminderAt = null,
     OneShotTaskStatus Status = OneShotTaskStatus.Active,
     DateTimeOffset? CompletedAt = null,
-    DateTimeOffset? CancelledAt = null)
+    DateTimeOffset? CancelledAt = null,
+    long? RecurringTaskId = null)
 {
     public TaskItem Complete(DateTimeOffset now)
     {
