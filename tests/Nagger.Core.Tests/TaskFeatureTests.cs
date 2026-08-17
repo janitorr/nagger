@@ -80,8 +80,10 @@ public sealed class TaskFeatureTests
         first.Summary.ShouldBe(new MorningReportSummary(1, 1, 1));
         first.SchemaVersion.ShouldBe("2");
         first.Items.Count.ShouldBe(3);
+        first.Items.Single(x => x.Id == 1).DueState.ShouldBe("due_today");
         first.Items.Single(x => x.Id == 1).DaysOverdue.ShouldBeNull();
         first.Items.Single(x => x.Id == 1).DaysUntilDue.ShouldBeNull();
+        first.Items.Single(x => x.Id == 2).DueState.ShouldBe("overdue");
         first.Items.Single(x => x.Id == 2).DaysOverdue.ShouldBe(3);
         first.Items.Single(x => x.Id == 2).DaysUntilDue.ShouldBeNull();
         first.Items.Single(x => x.Id == 3).DaysOverdue.ShouldBeNull();
