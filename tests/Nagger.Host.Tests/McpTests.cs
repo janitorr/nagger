@@ -28,8 +28,12 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
 
         using var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
-        var names = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
-            .Select(tool => tool.GetProperty("name").GetString()).ToList();
+        var names = tools
+            .RootElement.GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
 
         names.ShouldContain("create_one_shot_task");
         names.ShouldContain("complete_one_shot_task");
@@ -50,14 +54,41 @@ public sealed class McpTests
         var pausedId = await CreateTaskAsync(client, session, "Paused", 3);
         var doneId = await CreateTaskAsync(client, session, "Done", 4);
         var cancelledId = await CreateTaskAsync(client, session, "Cancelled", 5);
-        using var paused = await SendMcpAsync(client, session, 6, "tools/call", new { name = "pause_one_shot_task", arguments = new { id = pausedId } });
-        using var completed = await SendMcpAsync(client, session, 7, "tools/call", new { name = "complete_one_shot_task", arguments = new { id = doneId } });
-        using var cancelled = await SendMcpAsync(client, session, 8, "tools/call", new { name = "cancel_one_shot_task", arguments = new { id = cancelledId } });
+        using var paused = await SendMcpAsync(
+            client,
+            session,
+            6,
+            "tools/call",
+            new { name = "pause_one_shot_task", arguments = new { id = pausedId } }
+        );
+        using var completed = await SendMcpAsync(
+            client,
+            session,
+            7,
+            "tools/call",
+            new { name = "complete_one_shot_task", arguments = new { id = doneId } }
+        );
+        using var cancelled = await SendMcpAsync(
+            client,
+            session,
+            8,
+            "tools/call",
+            new { name = "cancel_one_shot_task", arguments = new { id = cancelledId } }
+        );
 
-        using var response = await SendMcpAsync(client, session, 9, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            9,
+            "tools/call",
+            new { name = "list_one_shot_tasks", arguments = new { } }
+        );
         var tasks = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        tasks.EnumerateArray().Select(task => task.GetProperty("id").GetInt64()).ShouldBe([activeId, pausedId]);
+        tasks
+            .EnumerateArray()
+            .Select(task => task.GetProperty("id").GetInt64())
+            .ShouldBe([activeId, pausedId]);
         tasks[0].GetProperty("status").GetString().ShouldBe("active");
         tasks[1].GetProperty("status").GetString().ShouldBe("paused");
     }
@@ -69,9 +100,19 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
 
-        using var response = await SendMcpAsync(client, session, 2, "tools/call", new { name = "list_one_shot_tasks", arguments = new { } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new { name = "list_one_shot_tasks", arguments = new { } }
+        );
 
-        response.RootElement.GetProperty("result").GetProperty("structuredContent").GetArrayLength().ShouldBe(0);
+        response
+            .RootElement.GetProperty("result")
+            .GetProperty("structuredContent")
+            .GetArrayLength()
+            .ShouldBe(0);
     }
 
     [Fact]
@@ -82,12 +123,22 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
 
         using var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
-        var createTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
+        var createTool = tools
+            .RootElement.GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
             .Single(tool => tool.GetProperty("name").GetString() == "create_one_shot_task");
-        var requiredFields = createTool.GetProperty("inputSchema").GetProperty("required").EnumerateArray()
-            .Select(field => field.GetString()).ToList();
+        var requiredFields = createTool
+            .GetProperty("inputSchema")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(field => field.GetString())
+            .ToList();
 
-        createTool.GetProperty("description").GetString()!.ShouldContain("single task", Case.Insensitive);
+        createTool
+            .GetProperty("description")
+            .GetString()!
+            .ShouldContain("single task", Case.Insensitive);
         requiredFields.ShouldContain("title");
         requiredFields.ShouldContain("dueAt");
         requiredFields.ShouldContain("reminderPolicy");
@@ -101,10 +152,16 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
 
         using var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
-        var pauseTool = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
+        var pauseTool = tools
+            .RootElement.GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
             .Single(tool => tool.GetProperty("name").GetString() == "pause_one_shot_task");
 
-        pauseTool.GetProperty("description").GetString()!.ShouldContain("temporarily", Case.Insensitive);
+        pauseTool
+            .GetProperty("description")
+            .GetString()!
+            .ShouldContain("temporarily", Case.Insensitive);
     }
 
     [Fact]
@@ -114,11 +171,22 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
 
-        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
-        {
-            name = "create_one_shot_task",
-            arguments = new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "once" }
-        });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new
+            {
+                name = "create_one_shot_task",
+                arguments = new
+                {
+                    title = "Pay rent",
+                    dueAt = "2026-08-04T09:00:00+03:00",
+                    reminderPolicy = "once",
+                },
+            }
+        );
         var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         task.GetProperty("id").GetInt64().ShouldBe(1);
@@ -133,7 +201,13 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         var id = await CreateTaskAsync(client, session);
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "pause_one_shot_task", arguments = new { id } }
+        );
         var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         task.GetProperty("status").GetString().ShouldBe("paused");
@@ -148,9 +222,21 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
         var id = await CreateTaskAsync(client, session);
-        using var paused = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
+        using var paused = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "pause_one_shot_task", arguments = new { id } }
+        );
 
-        using var response = await SendMcpAsync(client, session, 4, "tools/call", new { name = "resume_one_shot_task", arguments = new { id } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            4,
+            "tools/call",
+            new { name = "resume_one_shot_task", arguments = new { id } }
+        );
         var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         task.GetProperty("status").GetString().ShouldBe("active");
@@ -166,7 +252,13 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         var id = await CreateTaskAsync(client, session);
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "complete_one_shot_task", arguments = new { id } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "complete_one_shot_task", arguments = new { id } }
+        );
         var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         task.GetProperty("status").GetString().ShouldBe("done");
@@ -182,7 +274,13 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         var id = await CreateTaskAsync(client, session);
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "cancel_one_shot_task", arguments = new { id } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "cancel_one_shot_task", arguments = new { id } }
+        );
         var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         task.GetProperty("status").GetString().ShouldBe("cancelled");
@@ -198,7 +296,13 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         await CreateTaskAsync(client, session);
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "get_morning_report", arguments = new { date = "2026-08-04" } }
+        );
         var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         report.GetProperty("schemaVersion").GetString().ShouldBe("3");
@@ -218,7 +322,13 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         await CreateTaskAsync(client, session, dueAt: "2026-08-05T09:00:00+03:00");
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "get_morning_report", arguments = new { date = "2026-08-04" } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "get_morning_report", arguments = new { date = "2026-08-04" } }
+        );
         var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         report.GetProperty("schemaVersion").GetString().ShouldBe("3");
@@ -236,15 +346,32 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
 
-        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
-        {
-            name = "create_one_shot_task",
-            arguments = new { title = "", dueAt = "not-a-date", reminderPolicy = "daily" }
-        });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new
+            {
+                name = "create_one_shot_task",
+                arguments = new
+                {
+                    title = "",
+                    dueAt = "not-a-date",
+                    reminderPolicy = "daily",
+                },
+            }
+        );
 
-        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        response
+            .RootElement.GetProperty("result")
+            .GetProperty("isError")
+            .GetBoolean()
+            .ShouldBeTrue();
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()).ShouldBe(0);
+        (
+            await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()
+        ).ShouldBe(0);
     }
 
     [Fact]
@@ -254,9 +381,19 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
 
-        using var response = await SendMcpAsync(client, session, 2, "tools/call", new { name = "complete_one_shot_task", arguments = new { id = 42 } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new { name = "complete_one_shot_task", arguments = new { id = 42 } }
+        );
 
-        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        response
+            .RootElement.GetProperty("result")
+            .GetProperty("isError")
+            .GetBoolean()
+            .ShouldBeTrue();
     }
 
     [Fact]
@@ -266,13 +403,31 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
         var id = await CreateTaskAsync(client, session);
-        using var paused = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_one_shot_task", arguments = new { id } });
+        using var paused = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "pause_one_shot_task", arguments = new { id } }
+        );
 
-        using var response = await SendMcpAsync(client, session, 4, "tools/call", new { name = "complete_one_shot_task", arguments = new { id } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            4,
+            "tools/call",
+            new { name = "complete_one_shot_task", arguments = new { id } }
+        );
 
-        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        response
+            .RootElement.GetProperty("result")
+            .GetProperty("isError")
+            .GetBoolean()
+            .ShouldBeTrue();
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()).Status.ShouldBe("paused");
+        (
+            await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()
+        ).Status.ShouldBe("paused");
     }
 
     [Fact]
@@ -283,8 +438,12 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
 
         using var tools = await SendMcpAsync(client, session, 2, "tools/list", new { });
-        var names = tools.RootElement.GetProperty("result").GetProperty("tools").EnumerateArray()
-            .Select(tool => tool.GetProperty("name").GetString()).ToList();
+        var names = tools
+            .RootElement.GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
 
         names.ShouldContain("create_recurring_task");
         names.ShouldContain("complete_recurring_task");
@@ -302,11 +461,24 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         var startDate = FutureStartDate();
 
-        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
-        {
-            name = "create_recurring_task",
-            arguments = new { title = "Team sync", startDate, recurrenceEvery = 1, recurrenceUnit = "weeks", reminderPolicy = "once" }
-        });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new
+            {
+                name = "create_recurring_task",
+                arguments = new
+                {
+                    title = "Team sync",
+                    startDate,
+                    recurrenceEvery = 1,
+                    recurrenceUnit = "weeks",
+                    reminderPolicy = "once",
+                },
+            }
+        );
         var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         template.GetProperty("id").GetInt64().ShouldBe(1);
@@ -324,7 +496,13 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         var templateId = await CreateRecurringTaskAsync(client, session, 2);
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "complete_recurring_task", arguments = new { id = templateId } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "complete_recurring_task", arguments = new { id = templateId } }
+        );
         var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         task.GetProperty("status").GetString().ShouldBe("done");
@@ -335,7 +513,9 @@ public sealed class McpTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
         (await db.RecurringTaskInstances.CountAsync()).ShouldBe(2);
-        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "active")).Title.ShouldBe("Team sync");
+        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "active")).Title.ShouldBe(
+            "Team sync"
+        );
     }
 
     [Fact]
@@ -345,9 +525,19 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
 
-        using var response = await SendMcpAsync(client, session, 2, "tools/call", new { name = "complete_recurring_task", arguments = new { id = 42 } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new { name = "complete_recurring_task", arguments = new { id = 42 } }
+        );
 
-        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        response
+            .RootElement.GetProperty("result")
+            .GetProperty("isError")
+            .GetBoolean()
+            .ShouldBeTrue();
     }
 
     [Fact]
@@ -358,13 +548,23 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         var templateId = await CreateRecurringTaskAsync(client, session, 2);
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_recurring_task", arguments = new { id = templateId } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "pause_recurring_task", arguments = new { id = templateId } }
+        );
         var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         template.GetProperty("status").GetString().ShouldBe("paused");
 
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("paused");
+        (
+            await scope
+                .ServiceProvider.GetRequiredService<NaggerDbContext>()
+                .RecurringTaskInstances.SingleAsync()
+        ).Status.ShouldBe("paused");
     }
 
     [Fact]
@@ -374,15 +574,31 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
         var templateId = await CreateRecurringTaskAsync(client, session, 2);
-        using var paused = await SendMcpAsync(client, session, 3, "tools/call", new { name = "pause_recurring_task", arguments = new { id = templateId } });
+        using var paused = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "pause_recurring_task", arguments = new { id = templateId } }
+        );
 
-        using var response = await SendMcpAsync(client, session, 4, "tools/call", new { name = "resume_recurring_task", arguments = new { id = templateId } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            4,
+            "tools/call",
+            new { name = "resume_recurring_task", arguments = new { id = templateId } }
+        );
         var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         template.GetProperty("status").GetString().ShouldBe("active");
 
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("active");
+        (
+            await scope
+                .ServiceProvider.GetRequiredService<NaggerDbContext>()
+                .RecurringTaskInstances.SingleAsync()
+        ).Status.ShouldBe("active");
     }
 
     [Fact]
@@ -393,7 +609,13 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         var templateId = await CreateRecurringTaskAsync(client, session, 2);
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "cancel_recurring_task", arguments = new { id = templateId } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "cancel_recurring_task", arguments = new { id = templateId } }
+        );
         var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         template.GetProperty("status").GetString().ShouldBe("cancelled");
@@ -408,7 +630,13 @@ public sealed class McpTests
         var session = await InitializeMcpAsync(client);
         await CreateRecurringTaskAsync(client, session, 2);
 
-        using var response = await SendMcpAsync(client, session, 3, "tools/call", new { name = "list_recurring_tasks", arguments = new { } });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "list_recurring_tasks", arguments = new { } }
+        );
         var templates = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
         templates.EnumerateArray().Select(x => x.GetProperty("id").GetInt64()).ShouldBe([1]);
@@ -422,58 +650,146 @@ public sealed class McpTests
         using var client = factory.CreateClient();
         var session = await InitializeMcpAsync(client);
 
-        using var response = await SendMcpAsync(client, session, 2, "tools/call", new
-        {
-            name = "create_recurring_task",
-            arguments = new { title = "", startDate = "not-a-date", recurrenceEvery = 0, recurrenceUnit = "hourly", reminderPolicy = "daily" }
-        });
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new
+            {
+                name = "create_recurring_task",
+                arguments = new
+                {
+                    title = "",
+                    startDate = "not-a-date",
+                    recurrenceEvery = 0,
+                    recurrenceUnit = "hourly",
+                    reminderPolicy = "daily",
+                },
+            }
+        );
 
-        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        response
+            .RootElement.GetProperty("result")
+            .GetProperty("isError")
+            .GetBoolean()
+            .ShouldBeTrue();
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskTemplates.CountAsync()).ShouldBe(0);
+        (
+            await scope
+                .ServiceProvider.GetRequiredService<NaggerDbContext>()
+                .RecurringTaskTemplates.CountAsync()
+        ).ShouldBe(0);
     }
 
-    private static async Task<long> CreateRecurringTaskAsync(HttpClient client, McpSession session, int requestId)
+    private static async Task<long> CreateRecurringTaskAsync(
+        HttpClient client,
+        McpSession session,
+        int requestId
+    )
     {
-        using var response = await SendMcpAsync(client, session, requestId, "tools/call", new
-        {
-            name = "create_recurring_task",
-            arguments = new { title = "Team sync", startDate = FutureStartDate(), recurrenceEvery = 1, recurrenceUnit = "weeks", reminderPolicy = "once" }
-        });
-        return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            requestId,
+            "tools/call",
+            new
+            {
+                name = "create_recurring_task",
+                arguments = new
+                {
+                    title = "Team sync",
+                    startDate = FutureStartDate(),
+                    recurrenceEvery = 1,
+                    recurrenceUnit = "weeks",
+                    reminderPolicy = "once",
+                },
+            }
+        );
+        return response
+            .RootElement.GetProperty("result")
+            .GetProperty("structuredContent")
+            .GetProperty("id")
+            .GetInt64();
     }
 
-    private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+    private static string FutureStartDate() =>
+        DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
 
-    private static async Task<long> CreateTaskAsync(HttpClient client, McpSession session, string title = "Task", int requestId = 2, string dueAt = "2026-08-04T09:00:00+03:00")
+    private static async Task<long> CreateTaskAsync(
+        HttpClient client,
+        McpSession session,
+        string title = "Task",
+        int requestId = 2,
+        string dueAt = "2026-08-04T09:00:00+03:00"
+    )
     {
-        using var response = await SendMcpAsync(client, session, requestId, "tools/call", new
-        {
-            name = "create_one_shot_task",
-            arguments = new { title, dueAt, reminderPolicy = "none" }
-        });
-        return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            requestId,
+            "tools/call",
+            new
+            {
+                name = "create_one_shot_task",
+                arguments = new
+                {
+                    title,
+                    dueAt,
+                    reminderPolicy = "none",
+                },
+            }
+        );
+        return response
+            .RootElement.GetProperty("result")
+            .GetProperty("structuredContent")
+            .GetProperty("id")
+            .GetInt64();
     }
 
     private static async Task<McpSession> InitializeMcpAsync(HttpClient client)
     {
-        using var request = CreateMcpRequest(new
-        {
-            jsonrpc = "2.0",
-            id = 1,
-            method = "initialize",
-            @params = new { protocolVersion = "2025-11-25", capabilities = new { }, clientInfo = new { name = "Nagger tests", version = "1.0" } }
-        });
+        using var request = CreateMcpRequest(
+            new
+            {
+                jsonrpc = "2.0",
+                id = 1,
+                method = "initialize",
+                @params = new
+                {
+                    protocolVersion = "2025-11-25",
+                    capabilities = new { },
+                    clientInfo = new { name = "Nagger tests", version = "1.0" },
+                },
+            }
+        );
         using var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
         using var body = ParseMcpResponse(await response.Content.ReadAsStringAsync());
         response.Headers.TryGetValues("Mcp-Session-Id", out var sessionIds);
-        return new McpSession(sessionIds?.SingleOrDefault(), body.RootElement.GetProperty("result").GetProperty("protocolVersion").GetString()!);
+        return new McpSession(
+            sessionIds?.SingleOrDefault(),
+            body.RootElement.GetProperty("result").GetProperty("protocolVersion").GetString()!
+        );
     }
 
-    private static async Task<JsonDocument> SendMcpAsync(HttpClient client, McpSession session, int id, string method, object parameters)
+    private static async Task<JsonDocument> SendMcpAsync(
+        HttpClient client,
+        McpSession session,
+        int id,
+        string method,
+        object parameters
+    )
     {
-        using var request = CreateMcpRequest(new { jsonrpc = "2.0", id, method, @params = parameters });
+        using var request = CreateMcpRequest(
+            new
+            {
+                jsonrpc = "2.0",
+                id,
+                method,
+                @params = parameters,
+            }
+        );
         if (session.Id is not null)
             request.Headers.Add("Mcp-Session-Id", session.Id);
         request.Headers.Add("Mcp-Protocol-Version", session.ProtocolVersion);
@@ -484,7 +800,10 @@ public sealed class McpTests
 
     private static HttpRequestMessage CreateMcpRequest(object payload)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/mcp") { Content = JsonContent.Create(payload) };
+        var request = new HttpRequestMessage(HttpMethod.Post, "/mcp")
+        {
+            Content = JsonContent.Create(payload),
+        };
         request.Headers.Accept.ParseAdd("application/json, text/event-stream");
         return request;
     }
@@ -493,7 +812,9 @@ public sealed class McpTests
     {
         const string dataPrefix = "data: ";
         var dataStart = response.IndexOf(dataPrefix, StringComparison.Ordinal);
-        return JsonDocument.Parse(dataStart >= 0 ? response[(dataStart + dataPrefix.Length)..].Trim() : response);
+        return JsonDocument.Parse(
+            dataStart >= 0 ? response[(dataStart + dataPrefix.Length)..].Trim() : response
+        );
     }
 
     private sealed record McpSession(string? Id, string ProtocolVersion);

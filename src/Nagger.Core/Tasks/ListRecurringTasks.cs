@@ -8,6 +8,8 @@ public sealed record ListRecurringTemplatesQuery : IQuery<IReadOnlyList<Recurrin
 public sealed class ListRecurringTemplatesHandler(IRecurringTaskTemplateStore store)
     : IQueryHandler<ListRecurringTemplatesQuery, IReadOnlyList<RecurringTaskTemplate>>
 {
-    public ValueTask<IReadOnlyList<RecurringTaskTemplate>> Handle(ListRecurringTemplatesQuery query, CancellationToken cancellationToken) =>
-        store.GetAllAsync(cancellationToken);
+    public ValueTask<IReadOnlyList<RecurringTaskTemplate>> Handle(
+        ListRecurringTemplatesQuery query,
+        CancellationToken cancellationToken
+    ) => store.GetAllAsync(cancellationToken);
 }

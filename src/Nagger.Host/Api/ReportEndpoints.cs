@@ -7,11 +7,14 @@ public static class ReportEndpoints
 {
     public static void MapReportEndpoints(this WebApplication app)
     {
-        app.MapGet("/reports/morning", async (string? date, IMediator mediator, CancellationToken cancellationToken) =>
-        {
-            var report = await mediator.Send(new MorningReportQuery(date), cancellationToken);
-            return Results.Ok(MorningReportResponse.From(report));
-        });
+        app.MapGet(
+            "/reports/morning",
+            async (string? date, IMediator mediator, CancellationToken cancellationToken) =>
+            {
+                var report = await mediator.Send(new MorningReportQuery(date), cancellationToken);
+                return Results.Ok(MorningReportResponse.From(report));
+            }
+        );
     }
 }
 
@@ -20,20 +23,35 @@ public sealed record MorningReportResponse(
     DateTimeOffset GeneratedAt,
     string Date,
     MorningReportSummaryResponse Summary,
-    IReadOnlyList<MorningReportItemResponse> Items)
+    IReadOnlyList<MorningReportItemResponse> Items
+)
 {
-    public static MorningReportResponse From(MorningReport report) => new(
-        report.SchemaVersion,
-        report.GeneratedAt,
-        report.Date.ToString("yyyy-MM-dd"),
-        new MorningReportSummaryResponse(report.Summary.DueToday, report.Summary.Overdue, report.Summary.Upcoming),
-        report.Items.Select(x => new MorningReportItemResponse(x.Id, x.Title, x.DueAt, x.Type, x.DueState, x.DaysOverdue, x.DaysUntilDue, x.ReminderPolicy)).ToList());
+    public static MorningReportResponse From(MorningReport report) =>
+        new(
+            report.SchemaVersion,
+            report.GeneratedAt,
+            report.Date.ToString("yyyy-MM-dd"),
+            new MorningReportSummaryResponse(
+                report.Summary.DueToday,
+                report.Summary.Overdue,
+                report.Summary.Upcoming
+            ),
+            report
+                .Items.Select(x => new MorningReportItemResponse(
+                    x.Id,
+                    x.Title,
+                    x.DueAt,
+                    x.Type,
+                    x.DueState,
+                    x.DaysOverdue,
+                    x.DaysUntilDue,
+                    x.ReminderPolicy
+                ))
+                .ToList()
+        );
 }
 
-public sealed record MorningReportSummaryResponse(
-    int DueToday,
-    int Overdue,
-    int Upcoming);
+public sealed record MorningReportSummaryResponse(int DueToday, int Overdue, int Upcoming);
 
 public sealed record MorningReportItemResponse(
     long Id,
@@ -43,4 +61,5 @@ public sealed record MorningReportItemResponse(
     string DueState,
     int? DaysOverdue,
     int? DaysUntilDue,
-    string ReminderPolicy);
+    string ReminderPolicy
+);
