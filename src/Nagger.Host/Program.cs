@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Nagger.Host;
 using Nagger.Host.Api;
 using Nagger.Host.Api.ExceptionHandling;
 using Nagger.Host.Composition.Mediator;
 using Nagger.Host.Composition.Persistence;
-using Nagger.Host;
 using Nagger.Host.Infrastructure;
 using Nagger.Host.Mcp;
 
@@ -15,7 +15,8 @@ builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole();
 builder.Services.AddNaggerPersistence(builder.Configuration);
 builder.Services.AddNaggerMediator();
-builder.Services.AddMcpServer()
+builder
+    .Services.AddMcpServer()
     .WithHttpTransport()
     .WithTools<McpTaskTools>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
 builder.Services.AddProblemDetails();
@@ -28,12 +29,19 @@ using (var scope = app.Services.CreateScope())
 
 app.UseExceptionHandler();
 
-app.Use(async (context, next) =>
-{
-    var timer = Stopwatch.StartNew();
-    await next(context);
-    AppLog.RequestCompleted(app.Logger, context.Request.Path, context.Response.StatusCode, timer.ElapsedMilliseconds);
-});
+app.Use(
+    async (context, next) =>
+    {
+        var timer = Stopwatch.StartNew();
+        await next(context);
+        AppLog.RequestCompleted(
+            app.Logger,
+            context.Request.Path,
+            context.Response.StatusCode,
+            timer.ElapsedMilliseconds
+        );
+    }
+);
 
 app.MapTaskEndpoints();
 app.MapRecurringTaskEndpoints();

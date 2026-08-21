@@ -21,7 +21,15 @@ public sealed class ApiTests
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "once" });
+        var response = await client.PostAsJsonAsync(
+            "/tasks/one-shot",
+            new
+            {
+                title = "Pay rent",
+                dueAt = "2026-08-04T09:00:00+03:00",
+                reminderPolicy = "once",
+            }
+        );
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
         using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -52,7 +60,10 @@ public sealed class ApiTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var tasks = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        tasks.RootElement.EnumerateArray().Select(task => task.GetProperty("id").GetInt64()).ShouldBe([activeId, pausedId]);
+        tasks
+            .RootElement.EnumerateArray()
+            .Select(task => task.GetProperty("id").GetInt64())
+            .ShouldBe([activeId, pausedId]);
         tasks.RootElement[0].GetProperty("status").GetString().ShouldBe("active");
         tasks.RootElement[1].GetProperty("status").GetString().ShouldBe("paused");
         tasks.RootElement[0].GetProperty("type").GetString().ShouldBe("one-shot");
@@ -100,15 +111,27 @@ public sealed class ApiTests
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "", dueAt = "not-a-date", reminderPolicy = "daily" });
+        var response = await client.PostAsJsonAsync(
+            "/tasks/one-shot",
+            new
+            {
+                title = "",
+                dueAt = "not-a-date",
+                reminderPolicy = "daily",
+            }
+        );
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         body.RootElement.GetProperty("errors").TryGetProperty("title", out _).ShouldBeTrue();
         body.RootElement.GetProperty("errors").TryGetProperty("dueAt", out _).ShouldBeTrue();
-        body.RootElement.GetProperty("errors").TryGetProperty("reminderPolicy", out _).ShouldBeTrue();
+        body.RootElement.GetProperty("errors")
+            .TryGetProperty("reminderPolicy", out _)
+            .ShouldBeTrue();
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()).ShouldBe(0);
+        (
+            await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()
+        ).ShouldBe(0);
     }
 
     [Fact]
@@ -146,7 +169,9 @@ public sealed class ApiTests
         using var client = factory.CreateClient();
         await CreateTaskAsync(client, "Future", "2026-08-12T09:00:00+03:00", "none");
 
-        using var report = JsonDocument.Parse(await client.GetStringAsync("/reports/morning?date=2026-08-04"));
+        using var report = JsonDocument.Parse(
+            await client.GetStringAsync("/reports/morning?date=2026-08-04")
+        );
 
         report.RootElement.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(0);
         report.RootElement.GetProperty("items").GetArrayLength().ShouldBe(0);
@@ -164,7 +189,10 @@ public sealed class ApiTests
 
         using var firstReport = JsonDocument.Parse(first);
         using var secondReport = JsonDocument.Parse(second);
-        secondReport.RootElement.GetProperty("items").GetArrayLength().ShouldBe(firstReport.RootElement.GetProperty("items").GetArrayLength());
+        secondReport
+            .RootElement.GetProperty("items")
+            .GetArrayLength()
+            .ShouldBe(firstReport.RootElement.GetProperty("items").GetArrayLength());
     }
 
     [Fact]
@@ -286,10 +314,21 @@ public sealed class ApiTests
         });
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Secret task", dueAt = "2026-08-04T09:00:00+03:00", reminderPolicy = "none" });
+        var response = await client.PostAsJsonAsync(
+            "/tasks/one-shot",
+            new
+            {
+                title = "Secret task",
+                dueAt = "2026-08-04T09:00:00+03:00",
+                reminderPolicy = "none",
+            }
+        );
 
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
-        (await response.Content.ReadAsStringAsync()).ShouldNotContain("storage failure", Case.Insensitive);
+        (await response.Content.ReadAsStringAsync()).ShouldNotContain(
+            "storage failure",
+            Case.Insensitive
+        );
     }
 
     [Fact]
@@ -298,7 +337,15 @@ public sealed class ApiTests
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title = "Task", due_at = "2026-08-04T09:00:00+03:00", reminder_policy = "once" });
+        var response = await client.PostAsJsonAsync(
+            "/tasks/one-shot",
+            new
+            {
+                title = "Task",
+                due_at = "2026-08-04T09:00:00+03:00",
+                reminder_policy = "once",
+            }
+        );
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -353,9 +400,22 @@ public sealed class ApiTests
         string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
     }
 
-    private static async Task<long> CreateTaskAsync(HttpClient client, string title = "Task", string dueAt = "2026-08-04T09:00:00+03:00", string reminderPolicy = "none")
+    private static async Task<long> CreateTaskAsync(
+        HttpClient client,
+        string title = "Task",
+        string dueAt = "2026-08-04T09:00:00+03:00",
+        string reminderPolicy = "none"
+    )
     {
-        using var response = await client.PostAsJsonAsync("/tasks/one-shot", new { title, dueAt, reminderPolicy });
+        using var response = await client.PostAsJsonAsync(
+            "/tasks/one-shot",
+            new
+            {
+                title,
+                dueAt,
+                reminderPolicy,
+            }
+        );
         using var task = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return task.RootElement.GetProperty("id").GetInt64();
     }
@@ -367,7 +427,16 @@ public sealed class ApiTests
         using var client = factory.CreateClient();
         var startDate = FutureStartDate();
 
-        var response = await client.PostAsJsonAsync("/tasks/recurring", new { title = "Team sync", startDate, recurrence = new { every = 1, unit = "weeks" }, reminderPolicy = "once" });
+        var response = await client.PostAsJsonAsync(
+            "/tasks/recurring",
+            new
+            {
+                title = "Team sync",
+                startDate,
+                recurrence = new { every = 1, unit = "weeks" },
+                reminderPolicy = "once",
+            }
+        );
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
         using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -375,7 +444,11 @@ public sealed class ApiTests
         template.RootElement.GetProperty("title").GetString().ShouldBe("Team sync");
         template.RootElement.GetProperty("startDate").GetString().ShouldBe(startDate);
         template.RootElement.GetProperty("recurrence").GetProperty("every").GetInt32().ShouldBe(1);
-        template.RootElement.GetProperty("recurrence").GetProperty("unit").GetString().ShouldBe("weeks");
+        template
+            .RootElement.GetProperty("recurrence")
+            .GetProperty("unit")
+            .GetString()
+            .ShouldBe("weeks");
         template.RootElement.GetProperty("reminderPolicy").GetString().ShouldBe("once");
         template.RootElement.GetProperty("status").GetString().ShouldBe("active");
         template.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
@@ -383,7 +456,9 @@ public sealed class ApiTests
         using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
         tasks.RootElement.GetArrayLength().ShouldBe(0);
         using var scope = factory.Services.CreateScope();
-        var instance = await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync();
+        var instance = await scope
+            .ServiceProvider.GetRequiredService<NaggerDbContext>()
+            .RecurringTaskInstances.SingleAsync();
         instance.Title.ShouldBe("Team sync");
         instance.Status.ShouldBe("active");
         instance.RecurringTaskId.ShouldBe(1);
@@ -395,7 +470,16 @@ public sealed class ApiTests
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/tasks/recurring", new { title = "", startDate = "not-a-date", recurrence = new { every = 0, unit = "hourly" }, reminderPolicy = "daily" });
+        var response = await client.PostAsJsonAsync(
+            "/tasks/recurring",
+            new
+            {
+                title = "",
+                startDate = "not-a-date",
+                recurrence = new { every = 0, unit = "hourly" },
+                reminderPolicy = "daily",
+            }
+        );
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -430,7 +514,10 @@ public sealed class ApiTests
 
         using var templates = JsonDocument.Parse(await client.GetStringAsync("/tasks/recurring"));
 
-        templates.RootElement.EnumerateArray().Select(x => x.GetProperty("id").GetInt64()).ShouldBe([1, 2]);
+        templates
+            .RootElement.EnumerateArray()
+            .Select(x => x.GetProperty("id").GetInt64())
+            .ShouldBe([1, 2]);
     }
 
     [Fact]
@@ -452,8 +539,12 @@ public sealed class ApiTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
         (await db.RecurringTaskInstances.CountAsync()).ShouldBe(2);
-        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "active")).Title.ShouldBe("Team sync");
-        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "done")).CompletedAt.ShouldNotBeNull();
+        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "active")).Title.ShouldBe(
+            "Team sync"
+        );
+        (
+            await db.RecurringTaskInstances.SingleAsync(x => x.Status == "done")
+        ).CompletedAt.ShouldNotBeNull();
     }
 
     [Fact]
@@ -480,7 +571,11 @@ public sealed class ApiTests
         using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         template.RootElement.GetProperty("status").GetString().ShouldBe("paused");
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("paused");
+        (
+            await scope
+                .ServiceProvider.GetRequiredService<NaggerDbContext>()
+                .RecurringTaskInstances.SingleAsync()
+        ).Status.ShouldBe("paused");
     }
 
     [Fact]
@@ -497,7 +592,11 @@ public sealed class ApiTests
         using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         template.RootElement.GetProperty("status").GetString().ShouldBe("active");
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("active");
+        (
+            await scope
+                .ServiceProvider.GetRequiredService<NaggerDbContext>()
+                .RecurringTaskInstances.SingleAsync()
+        ).Status.ShouldBe("active");
     }
 
     [Fact]
@@ -514,7 +613,11 @@ public sealed class ApiTests
         template.RootElement.GetProperty("status").GetString().ShouldBe("cancelled");
         template.RootElement.GetProperty("cancelledAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
         using var scope = factory.Services.CreateScope();
-        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()).Status.ShouldBe("cancelled");
+        (
+            await scope
+                .ServiceProvider.GetRequiredService<NaggerDbContext>()
+                .RecurringTaskInstances.SingleAsync()
+        ).Status.ShouldBe("cancelled");
     }
 
     [Fact]
@@ -543,32 +646,65 @@ public sealed class ApiTests
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
-    private static async Task<long> CreateRecurringTemplateAsync(HttpClient client, string title = "Team sync")
+    private static async Task<long> CreateRecurringTemplateAsync(
+        HttpClient client,
+        string title = "Team sync"
+    )
     {
-        using var response = await client.PostAsJsonAsync("/tasks/recurring", new { title, startDate = FutureStartDate(), recurrence = new { every = 1, unit = "weeks" }, reminderPolicy = "once" });
+        using var response = await client.PostAsJsonAsync(
+            "/tasks/recurring",
+            new
+            {
+                title,
+                startDate = FutureStartDate(),
+                recurrence = new { every = 1, unit = "weeks" },
+                reminderPolicy = "once",
+            }
+        );
         using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return template.RootElement.GetProperty("id").GetInt64();
     }
 
-    private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+    private static string FutureStartDate() =>
+        DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
 }
 
 public sealed class ThrowingStore : ITaskStore
 {
-    public ValueTask<TaskItem> AddAsync(TaskItem task, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure containing task title");
-    public ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
-    public ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
-    public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
-    public ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("storage failure");
+    public ValueTask<TaskItem> AddAsync(TaskItem task, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("storage failure containing task title");
+
+    public ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("storage failure");
+
+    public ValueTask UpdateAsync(TaskItem task, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("storage failure");
+
+    public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("storage failure");
+
+    public ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(
+        CancellationToken cancellationToken
+    ) => throw new InvalidOperationException("storage failure");
 }
 
 public sealed class CapturingLogger : ILogger
 {
     public List<int> EventIds { get; } = [];
     public List<string> Messages { get; } = [];
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+    public IDisposable? BeginScope<TState>(TState state)
+        where TState : notnull => null;
+
     public bool IsEnabled(LogLevel logLevel) => true;
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter
+    )
     {
         EventIds.Add(eventId.Id);
         Messages.Add(formatter(state, exception));

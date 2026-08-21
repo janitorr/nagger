@@ -15,7 +15,8 @@ namespace Nagger.Host.Infrastructure.Migrations
                 name: "one_shot_tasks",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                    Id = table
+                        .Column<long>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Title = table.Column<string>(type: "TEXT", nullable: false),
                     DueAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
@@ -25,19 +26,19 @@ namespace Nagger.Host.Infrastructure.Migrations
                     LastReminderAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
                     Status = table.Column<string>(type: "TEXT", nullable: false),
                     CompletedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
-                    CancelledAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true)
+                    CancelledAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_one_shot_tasks", x => x.Id);
-                });
+                }
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "one_shot_tasks");
+            migrationBuilder.DropTable(name: "one_shot_tasks");
         }
     }
 }
