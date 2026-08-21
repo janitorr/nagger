@@ -85,10 +85,7 @@ public sealed class McpTests
         );
         var tasks = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        tasks
-            .EnumerateArray()
-            .Select(task => task.GetProperty("id").GetInt64())
-            .ShouldBe([activeId, pausedId]);
+        tasks.EnumerateArray().Select(task => task.GetProperty("id").GetInt64()).ShouldBe([activeId, pausedId]);
         tasks[0].GetProperty("status").GetString().ShouldBe("active");
         tasks[1].GetProperty("status").GetString().ShouldBe("paused");
     }
@@ -108,11 +105,7 @@ public sealed class McpTests
             new { name = "list_one_shot_tasks", arguments = new { } }
         );
 
-        response
-            .RootElement.GetProperty("result")
-            .GetProperty("structuredContent")
-            .GetArrayLength()
-            .ShouldBe(0);
+        response.RootElement.GetProperty("result").GetProperty("structuredContent").GetArrayLength().ShouldBe(0);
     }
 
     [Fact]
@@ -135,10 +128,7 @@ public sealed class McpTests
             .Select(field => field.GetString())
             .ToList();
 
-        createTool
-            .GetProperty("description")
-            .GetString()!
-            .ShouldContain("single task", Case.Insensitive);
+        createTool.GetProperty("description").GetString()!.ShouldContain("single task", Case.Insensitive);
         requiredFields.ShouldContain("title");
         requiredFields.ShouldContain("dueAt");
         requiredFields.ShouldContain("reminderPolicy");
@@ -158,10 +148,7 @@ public sealed class McpTests
             .EnumerateArray()
             .Single(tool => tool.GetProperty("name").GetString() == "pause_one_shot_task");
 
-        pauseTool
-            .GetProperty("description")
-            .GetString()!
-            .ShouldContain("temporarily", Case.Insensitive);
+        pauseTool.GetProperty("description").GetString()!.ShouldContain("temporarily", Case.Insensitive);
     }
 
     [Fact]
@@ -363,15 +350,9 @@ public sealed class McpTests
             }
         );
 
-        response
-            .RootElement.GetProperty("result")
-            .GetProperty("isError")
-            .GetBoolean()
-            .ShouldBeTrue();
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
         using var scope = factory.Services.CreateScope();
-        (
-            await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()
-        ).ShouldBe(0);
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()).ShouldBe(0);
     }
 
     [Fact]
@@ -389,11 +370,7 @@ public sealed class McpTests
             new { name = "complete_one_shot_task", arguments = new { id = 42 } }
         );
 
-        response
-            .RootElement.GetProperty("result")
-            .GetProperty("isError")
-            .GetBoolean()
-            .ShouldBeTrue();
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
     }
 
     [Fact]
@@ -419,15 +396,11 @@ public sealed class McpTests
             new { name = "complete_one_shot_task", arguments = new { id } }
         );
 
-        response
-            .RootElement.GetProperty("result")
-            .GetProperty("isError")
-            .GetBoolean()
-            .ShouldBeTrue();
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
         using var scope = factory.Services.CreateScope();
-        (
-            await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()
-        ).Status.ShouldBe("paused");
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()).Status.ShouldBe(
+            "paused"
+        );
     }
 
     [Fact]
@@ -513,9 +486,7 @@ public sealed class McpTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
         (await db.RecurringTaskInstances.CountAsync()).ShouldBe(2);
-        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "active")).Title.ShouldBe(
-            "Team sync"
-        );
+        (await db.RecurringTaskInstances.SingleAsync(x => x.Status == "active")).Title.ShouldBe("Team sync");
     }
 
     [Fact]
@@ -533,11 +504,7 @@ public sealed class McpTests
             new { name = "complete_recurring_task", arguments = new { id = 42 } }
         );
 
-        response
-            .RootElement.GetProperty("result")
-            .GetProperty("isError")
-            .GetBoolean()
-            .ShouldBeTrue();
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
     }
 
     [Fact]
@@ -561,9 +528,7 @@ public sealed class McpTests
 
         using var scope = factory.Services.CreateScope();
         (
-            await scope
-                .ServiceProvider.GetRequiredService<NaggerDbContext>()
-                .RecurringTaskInstances.SingleAsync()
+            await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()
         ).Status.ShouldBe("paused");
     }
 
@@ -595,9 +560,7 @@ public sealed class McpTests
 
         using var scope = factory.Services.CreateScope();
         (
-            await scope
-                .ServiceProvider.GetRequiredService<NaggerDbContext>()
-                .RecurringTaskInstances.SingleAsync()
+            await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskInstances.SingleAsync()
         ).Status.ShouldBe("active");
     }
 
@@ -669,24 +632,14 @@ public sealed class McpTests
             }
         );
 
-        response
-            .RootElement.GetProperty("result")
-            .GetProperty("isError")
-            .GetBoolean()
-            .ShouldBeTrue();
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
         using var scope = factory.Services.CreateScope();
         (
-            await scope
-                .ServiceProvider.GetRequiredService<NaggerDbContext>()
-                .RecurringTaskTemplates.CountAsync()
+            await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskTemplates.CountAsync()
         ).ShouldBe(0);
     }
 
-    private static async Task<long> CreateRecurringTaskAsync(
-        HttpClient client,
-        McpSession session,
-        int requestId
-    )
+    private static async Task<long> CreateRecurringTaskAsync(HttpClient client, McpSession session, int requestId)
     {
         using var response = await SendMcpAsync(
             client,
@@ -706,15 +659,10 @@ public sealed class McpTests
                 },
             }
         );
-        return response
-            .RootElement.GetProperty("result")
-            .GetProperty("structuredContent")
-            .GetProperty("id")
-            .GetInt64();
+        return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
     }
 
-    private static string FutureStartDate() =>
-        DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+    private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
 
     private static async Task<long> CreateTaskAsync(
         HttpClient client,
@@ -740,11 +688,7 @@ public sealed class McpTests
                 },
             }
         );
-        return response
-            .RootElement.GetProperty("result")
-            .GetProperty("structuredContent")
-            .GetProperty("id")
-            .GetInt64();
+        return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
     }
 
     private static async Task<McpSession> InitializeMcpAsync(HttpClient client)
@@ -800,10 +744,7 @@ public sealed class McpTests
 
     private static HttpRequestMessage CreateMcpRequest(object payload)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/mcp")
-        {
-            Content = JsonContent.Create(payload),
-        };
+        var request = new HttpRequestMessage(HttpMethod.Post, "/mcp") { Content = JsonContent.Create(payload) };
         request.Headers.Accept.ParseAdd("application/json, text/event-stream");
         return request;
     }
@@ -812,9 +753,7 @@ public sealed class McpTests
     {
         const string dataPrefix = "data: ";
         var dataStart = response.IndexOf(dataPrefix, StringComparison.Ordinal);
-        return JsonDocument.Parse(
-            dataStart >= 0 ? response[(dataStart + dataPrefix.Length)..].Trim() : response
-        );
+        return JsonDocument.Parse(dataStart >= 0 ? response[(dataStart + dataPrefix.Length)..].Trim() : response);
     }
 
     private sealed record McpSession(string? Id, string ProtocolVersion);

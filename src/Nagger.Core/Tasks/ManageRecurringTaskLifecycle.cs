@@ -30,10 +30,7 @@ public sealed class CompleteRecurringTaskHandler(
         var current = instances.FirstOrDefault(x => x.Status == RecurringTaskInstanceStatus.Active);
         if (current is null)
             throw new ValidationException(
-                new Dictionary<string, string[]>
-                {
-                    ["status"] = ["Recurring task has no active instance to complete."],
-                }
+                new Dictionary<string, string[]> { ["status"] = ["Recurring task has no active instance to complete."] }
             );
 
         var completed = current.Complete(clock.UtcNow);

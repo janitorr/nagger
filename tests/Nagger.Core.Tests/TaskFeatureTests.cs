@@ -13,10 +13,7 @@ public sealed class TaskFeatureTests
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestClock());
 
-        var task = await handler.Handle(
-            new("Pay rent", "2026-08-04T09:00:00+03:00", "weekly-until-done"),
-            default
-        );
+        var task = await handler.Handle(new("Pay rent", "2026-08-04T09:00:00+03:00", "weekly-until-done"), default);
 
         task.Id.ShouldBe(1);
         task.Title.ShouldBe("Pay rent");
@@ -31,12 +28,7 @@ public sealed class TaskFeatureTests
     [InlineData("Task", "2026-08-04T09:00:00", "once", "dueAt")]
     [InlineData("Task", "2026-08-04T09:00:00+03:00", null, "reminderPolicy")]
     [InlineData("Task", "2026-08-04T09:00:00+03:00", "daily", "reminderPolicy")]
-    public async Task Rejects_invalid_creation_values(
-        string? title,
-        string? dueAt,
-        string? policy,
-        string field
-    )
+    public async Task Rejects_invalid_creation_values(string? title, string? dueAt, string? policy, string field)
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestClock());
@@ -52,9 +44,7 @@ public sealed class TaskFeatureTests
     [Theory]
     [InlineData("08/04/2026 09:00:00+03:00")]
     [InlineData("2026-08-04 09:00:00+03:00")]
-    public async Task CreateTask_GivenNonIsoDueTimestamp_WhenCreateRequested_ThenRejectsTask(
-        string dueAt
-    )
+    public async Task CreateTask_GivenNonIsoDueTimestamp_WhenCreateRequested_ThenRejectsTask(string dueAt)
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestClock());
@@ -70,9 +60,7 @@ public sealed class TaskFeatureTests
     [Theory]
     [InlineData("2026-08-04T09:00:00.1234567+03:00")]
     [InlineData("2026-08-04T06:00:00Z")]
-    public async Task CreateTask_GivenFractionalOrUtcDueTimestamp_WhenCreateRequested_ThenCreatesTask(
-        string dueAt
-    )
+    public async Task CreateTask_GivenFractionalOrUtcDueTimestamp_WhenCreateRequested_ThenCreatesTask(string dueAt)
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestClock());
@@ -243,11 +231,10 @@ public sealed class TaskFeatureTests
             )
         );
 
-        var report = await new MorningReportHandler(
-            store,
-            instanceStore,
-            new TestClock(TimeZoneInfo.Utc)
-        ).Handle(new("2026-08-04"), default);
+        var report = await new MorningReportHandler(store, instanceStore, new TestClock(TimeZoneInfo.Utc)).Handle(
+            new("2026-08-04"),
+            default
+        );
 
         report.Summary.ShouldBe(new MorningReportSummary(2, 0, 0));
         var recurring = report.Items.Single(x => x.Type == "recurring");
@@ -261,9 +248,7 @@ public sealed class TaskFeatureTests
     [InlineData(OneShotTaskStatus.Paused)]
     [InlineData(OneShotTaskStatus.Done)]
     [InlineData(OneShotTaskStatus.Cancelled)]
-    public async Task MorningReport_GivenInactiveTask_WhenRequested_ThenExcludesTask(
-        OneShotTaskStatus status
-    )
+    public async Task MorningReport_GivenInactiveTask_WhenRequested_ThenExcludesTask(OneShotTaskStatus status)
     {
         var store = new MemoryStore(
             new TaskItem(
@@ -291,24 +276,8 @@ public sealed class TaskFeatureTests
     public async Task ListOpenOneShotTasks_GivenMixedStatuses_WhenRequested_ThenReturnsActiveAndPausedInAscendingIdOrder()
     {
         var store = new MemoryStore(
-            new TaskItem(
-                4,
-                "Done",
-                default,
-                ReminderPolicy.None,
-                default,
-                default,
-                Status: OneShotTaskStatus.Done
-            ),
-            new TaskItem(
-                3,
-                "Paused",
-                default,
-                ReminderPolicy.None,
-                default,
-                default,
-                Status: OneShotTaskStatus.Paused
-            ),
+            new TaskItem(4, "Done", default, ReminderPolicy.None, default, default, Status: OneShotTaskStatus.Done),
+            new TaskItem(3, "Paused", default, ReminderPolicy.None, default, default, Status: OneShotTaskStatus.Paused),
             new TaskItem(
                 2,
                 "Cancelled",
@@ -407,9 +376,7 @@ public sealed class TaskFeatureTests
     {
         var handler = new CompleteOneShotTaskHandler(new MemoryStore(), new TestClock());
 
-        await Should.ThrowAsync<TaskNotFoundException>(async () =>
-            await handler.Handle(new(42), default)
-        );
+        await Should.ThrowAsync<TaskNotFoundException>(async () => await handler.Handle(new(42), default));
     }
 
     [Theory]
@@ -423,30 +390,17 @@ public sealed class TaskFeatureTests
         OneShotTaskStatus target
     )
     {
-        var original = new TaskItem(
-            1,
-            "Task",
-            default,
-            ReminderPolicy.None,
-            default,
-            default,
-            Status: initial
-        );
+        var original = new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial);
         var store = new MemoryStore(original);
 
-        var exception = await Should.ThrowAsync<ValidationException>(async () =>
-            await HandlerFor(target, store)()
-        );
+        var exception = await Should.ThrowAsync<ValidationException>(async () => await HandlerFor(target, store)());
 
         exception.Errors.Keys.ShouldContain("status");
         store.Tasks.Single().ShouldBe(original);
         store.Updates.ShouldBe(0);
     }
 
-    private static Func<ValueTask<TaskItem>> HandlerFor(
-        OneShotTaskStatus target,
-        MemoryStore store
-    ) =>
+    private static Func<ValueTask<TaskItem>> HandlerFor(OneShotTaskStatus target, MemoryStore store) =>
         target switch
         {
             OneShotTaskStatus.Done => () =>
@@ -479,9 +433,7 @@ public sealed class TaskFeatureTests
             return ValueTask.FromResult(task);
         }
 
-        public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(
-            CancellationToken cancellationToken
-        )
+        public ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken)
         {
             Reads++;
             return ValueTask.FromResult<IReadOnlyList<TaskItem>>(
@@ -489,9 +441,7 @@ public sealed class TaskFeatureTests
             );
         }
 
-        public ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(
-            CancellationToken cancellationToken
-        ) =>
+        public ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) =>
             ValueTask.FromResult<IReadOnlyList<TaskItem>>(
                 Tasks
                     .Where(x => x.Status is OneShotTaskStatus.Active or OneShotTaskStatus.Paused)
@@ -526,27 +476,18 @@ public sealed class TaskFeatureTests
             return ValueTask.FromResult(template);
         }
 
-        public ValueTask<RecurringTaskTemplate?> GetByIdAsync(
-            long id,
-            CancellationToken cancellationToken
-        ) => ValueTask.FromResult(Templates.SingleOrDefault(x => x.Id == id));
+        public ValueTask<RecurringTaskTemplate?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(Templates.SingleOrDefault(x => x.Id == id));
 
-        public ValueTask UpdateAsync(
-            RecurringTaskTemplate template,
-            CancellationToken cancellationToken
-        )
+        public ValueTask UpdateAsync(RecurringTaskTemplate template, CancellationToken cancellationToken)
         {
             Templates[Templates.FindIndex(x => x.Id == template.Id)] = template;
             Updates++;
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask<IReadOnlyList<RecurringTaskTemplate>> GetAllAsync(
-            CancellationToken cancellationToken
-        ) =>
-            ValueTask.FromResult<IReadOnlyList<RecurringTaskTemplate>>(
-                Templates.OrderBy(x => x.Id).ToList()
-            );
+        public ValueTask<IReadOnlyList<RecurringTaskTemplate>> GetAllAsync(CancellationToken cancellationToken) =>
+            ValueTask.FromResult<IReadOnlyList<RecurringTaskTemplate>>(Templates.OrderBy(x => x.Id).ToList());
     }
 
     private sealed class MemoryRecurringTaskInstanceStore(params RecurringTaskInstance[] instances)
@@ -564,23 +505,16 @@ public sealed class TaskFeatureTests
             return ValueTask.FromResult(instance);
         }
 
-        public ValueTask<RecurringTaskInstance?> GetByIdAsync(
-            long id,
-            CancellationToken cancellationToken
-        ) => ValueTask.FromResult(Instances.SingleOrDefault(x => x.Id == id));
+        public ValueTask<RecurringTaskInstance?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(Instances.SingleOrDefault(x => x.Id == id));
 
-        public ValueTask UpdateAsync(
-            RecurringTaskInstance instance,
-            CancellationToken cancellationToken
-        )
+        public ValueTask UpdateAsync(RecurringTaskInstance instance, CancellationToken cancellationToken)
         {
             Instances[Instances.FindIndex(x => x.Id == instance.Id)] = instance;
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask<IReadOnlyList<RecurringTaskInstance>> GetActiveAsync(
-            CancellationToken cancellationToken
-        ) =>
+        public ValueTask<IReadOnlyList<RecurringTaskInstance>> GetActiveAsync(CancellationToken cancellationToken) =>
             ValueTask.FromResult<IReadOnlyList<RecurringTaskInstance>>(
                 Instances.Where(x => x.Status == RecurringTaskInstanceStatus.Active).ToList()
             );
@@ -590,10 +524,7 @@ public sealed class TaskFeatureTests
             CancellationToken cancellationToken
         ) =>
             ValueTask.FromResult<IReadOnlyList<RecurringTaskInstance>>(
-                Instances
-                    .Where(x => x.RecurringTaskId == recurringTaskId)
-                    .OrderBy(x => x.Id)
-                    .ToList()
+                Instances.Where(x => x.RecurringTaskId == recurringTaskId).OrderBy(x => x.Id).ToList()
             );
     }
 }

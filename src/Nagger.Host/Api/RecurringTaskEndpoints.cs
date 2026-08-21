@@ -12,17 +12,10 @@ public static class RecurringTaskEndpoints
 
         group.MapPost(
             "",
-            async (
-                CreateRecurringTaskCommand command,
-                IMediator mediator,
-                CancellationToken cancellationToken
-            ) =>
+            async (CreateRecurringTaskCommand command, IMediator mediator, CancellationToken cancellationToken) =>
             {
                 var template = await mediator.Send(command, cancellationToken);
-                return Results.Created(
-                    $"/tasks/recurring/{template.Id}",
-                    RecurringTemplateResponse.From(template)
-                );
+                return Results.Created($"/tasks/recurring/{template.Id}", RecurringTemplateResponse.From(template));
             }
         );
 
@@ -95,10 +88,7 @@ public sealed record RecurringTemplateResponse(
             template.Id,
             template.Title,
             template.StartDate.ToString("yyyy-MM-dd"),
-            new RecurrenceRuleResponse(
-                template.Recurrence.Every,
-                template.Recurrence.Unit.ToContractValue()
-            ),
+            new RecurrenceRuleResponse(template.Recurrence.Every, template.Recurrence.Unit.ToContractValue()),
             template.ReminderPolicy.ToContractValue(),
             template.Status.ToContractValue(),
             template.CreatedAt,

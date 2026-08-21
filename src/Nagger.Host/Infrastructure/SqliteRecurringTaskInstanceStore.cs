@@ -4,8 +4,7 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Host.Infrastructure;
 
-public sealed class SqliteRecurringTaskInstanceStore(NaggerDbContext database)
-    : IRecurringTaskInstanceStore
+public sealed class SqliteRecurringTaskInstanceStore(NaggerDbContext database) : IRecurringTaskInstanceStore
 {
     public async ValueTask<RecurringTaskInstance> AddAsync(
         RecurringTaskInstance instance,
@@ -29,10 +28,7 @@ public sealed class SqliteRecurringTaskInstanceStore(NaggerDbContext database)
         return ToModel(entity);
     }
 
-    public async ValueTask<RecurringTaskInstance?> GetByIdAsync(
-        long id,
-        CancellationToken cancellationToken
-    )
+    public async ValueTask<RecurringTaskInstance?> GetByIdAsync(long id, CancellationToken cancellationToken)
     {
         var entity = await database
             .RecurringTaskInstances.AsNoTracking()
@@ -40,15 +36,9 @@ public sealed class SqliteRecurringTaskInstanceStore(NaggerDbContext database)
         return entity is null ? null : ToModel(entity);
     }
 
-    public async ValueTask UpdateAsync(
-        RecurringTaskInstance instance,
-        CancellationToken cancellationToken
-    )
+    public async ValueTask UpdateAsync(RecurringTaskInstance instance, CancellationToken cancellationToken)
     {
-        var entity = await database.RecurringTaskInstances.SingleAsync(
-            x => x.Id == instance.Id,
-            cancellationToken
-        );
+        var entity = await database.RecurringTaskInstances.SingleAsync(x => x.Id == instance.Id, cancellationToken);
         entity.Status = instance.Status.ToContractValue();
         entity.UpdatedAt = instance.UpdatedAt;
         entity.CompletedAt = instance.CompletedAt;
@@ -56,9 +46,7 @@ public sealed class SqliteRecurringTaskInstanceStore(NaggerDbContext database)
         await database.SaveChangesAsync(cancellationToken);
     }
 
-    public async ValueTask<IReadOnlyList<RecurringTaskInstance>> GetActiveAsync(
-        CancellationToken cancellationToken
-    ) =>
+    public async ValueTask<IReadOnlyList<RecurringTaskInstance>> GetActiveAsync(CancellationToken cancellationToken) =>
         (
             await database
                 .RecurringTaskInstances.AsNoTracking()

@@ -51,10 +51,7 @@ public sealed class CreateRecurringTaskHandler(
 
         var reminderPolicy = default(ReminderPolicy);
         if (!ReminderPolicies.TryParse(command.ReminderPolicy, out reminderPolicy))
-            errors["reminderPolicy"] =
-            [
-                "Reminder policy must be none, once, or weekly-until-done.",
-            ];
+            errors["reminderPolicy"] = ["Reminder policy must be none, once, or weekly-until-done."];
 
         if (startDate != default && startDate < Today())
             errors["startDate"] = ["Start date cannot be in the past."];
@@ -94,9 +91,7 @@ public sealed class CreateRecurringTaskHandler(
     }
 
     private DateOnly Today() =>
-        DateOnly.FromDateTime(
-            TimeZoneInfo.ConvertTimeFromUtc(clock.UtcNow.UtcDateTime, clock.TimeZone)
-        );
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(clock.UtcNow.UtcDateTime, clock.TimeZone));
 
     private static bool TryParseUnit(string? value, out RecurrenceUnit unit) =>
         value switch

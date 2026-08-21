@@ -10,11 +10,7 @@ public static class TaskEndpoints
     {
         app.MapPost(
             "/tasks/one-shot",
-            async (
-                CreateOneShotTaskCommand command,
-                IMediator mediator,
-                CancellationToken cancellationToken
-            ) =>
+            async (CreateOneShotTaskCommand command, IMediator mediator, CancellationToken cancellationToken) =>
             {
                 var task = await mediator.Send(command, cancellationToken);
                 AppLog.TaskCreated(app.Logger, task.Id);
@@ -35,38 +31,22 @@ public static class TaskEndpoints
         app.MapPost(
             "/tasks/{id:long}/complete",
             async (long id, IMediator mediator, CancellationToken cancellationToken) =>
-                await RunLifecycleCommand(
-                    new CompleteOneShotTaskCommand(id),
-                    mediator,
-                    cancellationToken
-                )
+                await RunLifecycleCommand(new CompleteOneShotTaskCommand(id), mediator, cancellationToken)
         );
         app.MapPost(
             "/tasks/{id:long}/pause",
             async (long id, IMediator mediator, CancellationToken cancellationToken) =>
-                await RunLifecycleCommand(
-                    new PauseOneShotTaskCommand(id),
-                    mediator,
-                    cancellationToken
-                )
+                await RunLifecycleCommand(new PauseOneShotTaskCommand(id), mediator, cancellationToken)
         );
         app.MapPost(
             "/tasks/{id:long}/resume",
             async (long id, IMediator mediator, CancellationToken cancellationToken) =>
-                await RunLifecycleCommand(
-                    new ResumeOneShotTaskCommand(id),
-                    mediator,
-                    cancellationToken
-                )
+                await RunLifecycleCommand(new ResumeOneShotTaskCommand(id), mediator, cancellationToken)
         );
         app.MapPost(
             "/tasks/{id:long}/cancel",
             async (long id, IMediator mediator, CancellationToken cancellationToken) =>
-                await RunLifecycleCommand(
-                    new CancelOneShotTaskCommand(id),
-                    mediator,
-                    cancellationToken
-                )
+                await RunLifecycleCommand(new CancelOneShotTaskCommand(id), mediator, cancellationToken)
         );
     }
 

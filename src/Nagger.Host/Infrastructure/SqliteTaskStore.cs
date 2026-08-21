@@ -25,9 +25,7 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
         return ToModel(entity);
     }
 
-    public async ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(
-        CancellationToken cancellationToken
-    ) =>
+    public async ValueTask<IReadOnlyList<TaskItem>> GetActiveAsync(CancellationToken cancellationToken) =>
         (
             await database
                 .Tasks.AsNoTracking()
@@ -38,9 +36,7 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
             .Select(ToModel)
             .ToList();
 
-    public async ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(
-        CancellationToken cancellationToken
-    ) =>
+    public async ValueTask<IReadOnlyList<TaskItem>> GetOpenOneShotTasksAsync(CancellationToken cancellationToken) =>
         (
             await database
                 .Tasks.AsNoTracking()
@@ -53,9 +49,7 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
 
     public async ValueTask<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken)
     {
-        var entity = await database
-            .Tasks.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var entity = await database.Tasks.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         return entity is null ? null : ToModel(entity);
     }
 

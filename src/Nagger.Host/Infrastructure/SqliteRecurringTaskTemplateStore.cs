@@ -4,8 +4,7 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Host.Infrastructure;
 
-public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext)
-    : IRecurringTaskTemplateStore
+public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) : IRecurringTaskTemplateStore
 {
     public async ValueTask<RecurringTaskTemplate> AddAsync(
         RecurringTaskTemplate template,
@@ -34,10 +33,7 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext)
         };
     }
 
-    public async ValueTask<RecurringTaskTemplate?> GetByIdAsync(
-        long id,
-        CancellationToken cancellationToken
-    )
+    public async ValueTask<RecurringTaskTemplate?> GetByIdAsync(long id, CancellationToken cancellationToken)
     {
         var entity = await dbContext.RecurringTaskTemplates.FindAsync(
             new object[] { id },
@@ -52,10 +48,7 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext)
         return ToModel(entity);
     }
 
-    public async ValueTask UpdateAsync(
-        RecurringTaskTemplate template,
-        CancellationToken cancellationToken
-    )
+    public async ValueTask UpdateAsync(RecurringTaskTemplate template, CancellationToken cancellationToken)
     {
         var entity =
             await dbContext.RecurringTaskTemplates.FindAsync(
@@ -75,9 +68,7 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async ValueTask<IReadOnlyList<RecurringTaskTemplate>> GetAllAsync(
-        CancellationToken cancellationToken
-    )
+    public async ValueTask<IReadOnlyList<RecurringTaskTemplate>> GetAllAsync(CancellationToken cancellationToken)
     {
         var entities = await dbContext
             .RecurringTaskTemplates.AsNoTracking()

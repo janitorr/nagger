@@ -22,9 +22,7 @@ namespace Nagger.Host.Infrastructure.Migrations
                 name: "recurring_task_templates",
                 columns: table => new
                 {
-                    Id = table
-                        .Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                    Id = table.Column<long>(type: "INTEGER", nullable: false).Annotation("Sqlite:Autoincrement", true),
                     Title = table.Column<string>(type: "TEXT", nullable: false),
                     StartDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
                     RecurrenceEvery = table.Column<int>(type: "INTEGER", nullable: false),

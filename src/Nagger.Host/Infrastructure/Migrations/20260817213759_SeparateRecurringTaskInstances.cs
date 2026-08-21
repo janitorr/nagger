@@ -17,9 +17,7 @@ namespace Nagger.Host.Infrastructure.Migrations
                 name: "recurring_task_instances",
                 columns: table => new
                 {
-                    Id = table
-                        .Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                    Id = table.Column<long>(type: "INTEGER", nullable: false).Annotation("Sqlite:Autoincrement", true),
                     RecurringTaskId = table.Column<long>(type: "INTEGER", nullable: false),
                     Title = table.Column<string>(type: "TEXT", nullable: false),
                     DueAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),

@@ -35,10 +35,7 @@ public sealed record TaskItem(
     {
         if (Status != OneShotTaskStatus.Active)
             throw new ValidationException(
-                new Dictionary<string, string[]>
-                {
-                    ["status"] = [$"Cannot pause a {Status.ToContractValue()} task."],
-                }
+                new Dictionary<string, string[]> { ["status"] = [$"Cannot pause a {Status.ToContractValue()} task."] }
             );
 
         return this with
@@ -52,10 +49,7 @@ public sealed record TaskItem(
     {
         if (Status != OneShotTaskStatus.Paused)
             throw new ValidationException(
-                new Dictionary<string, string[]>
-                {
-                    ["status"] = [$"Cannot resume a {Status.ToContractValue()} task."],
-                }
+                new Dictionary<string, string[]> { ["status"] = [$"Cannot resume a {Status.ToContractValue()} task."] }
             );
 
         return this with
@@ -69,10 +63,7 @@ public sealed record TaskItem(
     {
         if (Status is not (OneShotTaskStatus.Active or OneShotTaskStatus.Paused))
             throw new ValidationException(
-                new Dictionary<string, string[]>
-                {
-                    ["status"] = [$"Cannot cancel a {Status.ToContractValue()} task."],
-                }
+                new Dictionary<string, string[]> { ["status"] = [$"Cannot cancel a {Status.ToContractValue()} task."] }
             );
 
         return this with

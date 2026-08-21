@@ -19,10 +19,7 @@ public sealed record RecurringTaskInstance(
             throw new ValidationException(
                 new Dictionary<string, string[]>
                 {
-                    ["status"] =
-                    [
-                        $"Cannot complete a {Status.ToContractValue()} recurring instance.",
-                    ],
+                    ["status"] = [$"Cannot complete a {Status.ToContractValue()} recurring instance."],
                 }
             );
 
@@ -57,10 +54,7 @@ public sealed record RecurringTaskInstance(
             throw new ValidationException(
                 new Dictionary<string, string[]>
                 {
-                    ["status"] =
-                    [
-                        $"Cannot resume a {Status.ToContractValue()} recurring instance.",
-                    ],
+                    ["status"] = [$"Cannot resume a {Status.ToContractValue()} recurring instance."],
                 }
             );
 
@@ -73,16 +67,11 @@ public sealed record RecurringTaskInstance(
 
     public RecurringTaskInstance Cancel(DateTimeOffset now)
     {
-        if (
-            Status is not (RecurringTaskInstanceStatus.Active or RecurringTaskInstanceStatus.Paused)
-        )
+        if (Status is not (RecurringTaskInstanceStatus.Active or RecurringTaskInstanceStatus.Paused))
             throw new ValidationException(
                 new Dictionary<string, string[]>
                 {
-                    ["status"] =
-                    [
-                        $"Cannot cancel a {Status.ToContractValue()} recurring instance.",
-                    ],
+                    ["status"] = [$"Cannot cancel a {Status.ToContractValue()} recurring instance."],
                 }
             );
 

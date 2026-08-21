@@ -10,10 +10,7 @@ public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt, stri
 public sealed class CreateOneShotTaskHandler(ITaskStore store, IClock clock)
     : ICommandHandler<CreateOneShotTaskCommand, TaskItem>
 {
-    public async ValueTask<TaskItem> Handle(
-        CreateOneShotTaskCommand command,
-        CancellationToken cancellationToken
-    )
+    public async ValueTask<TaskItem> Handle(CreateOneShotTaskCommand command, CancellationToken cancellationToken)
     {
         var errors = new Dictionary<string, string[]>();
         if (string.IsNullOrWhiteSpace(command.Title))
@@ -35,16 +32,10 @@ public sealed class CreateOneShotTaskHandler(ITaskStore store, IClock clock)
                 out dueAt
             )
         )
-            errors["dueAt"] =
-            [
-                "Due timestamp must be an ISO-8601 value with an explicit UTC offset.",
-            ];
+            errors["dueAt"] = ["Due timestamp must be an ISO-8601 value with an explicit UTC offset."];
 
         if (!ReminderPolicies.TryParse(command.ReminderPolicy, out var reminderPolicy))
-            errors["reminderPolicy"] =
-            [
-                "Reminder policy must be none, once, or weekly-until-done.",
-            ];
+            errors["reminderPolicy"] = ["Reminder policy must be none, once, or weekly-until-done."];
 
         if (errors.Count > 0)
             throw new ValidationException(errors);

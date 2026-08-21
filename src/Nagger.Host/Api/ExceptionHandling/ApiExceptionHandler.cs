@@ -15,10 +15,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
         if (exception is ValidationException validation)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await context.Response.WriteAsJsonAsync(
-                new ValidationError(validation.Errors),
-                cancellationToken
-            );
+            await context.Response.WriteAsJsonAsync(new ValidationError(validation.Errors), cancellationToken);
             AppLog.ValidationRejected(logger, context.Request.Path);
             return true;
         }
@@ -37,10 +34,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
 
         AppLog.UnexpectedFailure(logger, context.Request.Path, exception.GetType().Name);
         await Results
-            .Problem(
-                statusCode: StatusCodes.Status500InternalServerError,
-                title: "An unexpected error occurred."
-            )
+            .Problem(statusCode: StatusCodes.Status500InternalServerError, title: "An unexpected error occurred.")
             .ExecuteAsync(context);
         return true;
     }

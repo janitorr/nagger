@@ -15,9 +15,7 @@ namespace Nagger.Host.Infrastructure.Migrations
                 name: "one_shot_tasks",
                 columns: table => new
                 {
-                    Id = table
-                        .Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                    Id = table.Column<long>(type: "INTEGER", nullable: false).Annotation("Sqlite:Autoincrement", true),
                     Title = table.Column<string>(type: "TEXT", nullable: false),
                     DueAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
                     ReminderPolicy = table.Column<string>(type: "TEXT", nullable: false),

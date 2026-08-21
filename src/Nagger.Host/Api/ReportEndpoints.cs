@@ -31,11 +31,7 @@ public sealed record MorningReportResponse(
             report.SchemaVersion,
             report.GeneratedAt,
             report.Date.ToString("yyyy-MM-dd"),
-            new MorningReportSummaryResponse(
-                report.Summary.DueToday,
-                report.Summary.Overdue,
-                report.Summary.Upcoming
-            ),
+            new MorningReportSummaryResponse(report.Summary.DueToday, report.Summary.Overdue, report.Summary.Upcoming),
             report
                 .Items.Select(x => new MorningReportItemResponse(
                     x.Id,

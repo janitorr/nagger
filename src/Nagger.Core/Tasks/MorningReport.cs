@@ -27,16 +27,10 @@ public sealed record MorningReportItem(
     string ReminderPolicy
 );
 
-public sealed class MorningReportHandler(
-    ITaskStore store,
-    IRecurringTaskInstanceStore instanceStore,
-    IClock clock
-) : IQueryHandler<MorningReportQuery, MorningReport>
+public sealed class MorningReportHandler(ITaskStore store, IRecurringTaskInstanceStore instanceStore, IClock clock)
+    : IQueryHandler<MorningReportQuery, MorningReport>
 {
-    public async ValueTask<MorningReport> Handle(
-        MorningReportQuery query,
-        CancellationToken cancellationToken
-    )
+    public async ValueTask<MorningReport> Handle(MorningReportQuery query, CancellationToken cancellationToken)
     {
         if (
             !DateOnly.TryParseExact(
@@ -115,18 +109,7 @@ public sealed class MorningReportHandler(
         if (comparison == 0)
         {
             dueToday++;
-            items.Add(
-                new MorningReportItem(
-                    id,
-                    title,
-                    dueAt,
-                    type,
-                    "due_today",
-                    null,
-                    null,
-                    reminderPolicy
-                )
-            );
+            items.Add(new MorningReportItem(id, title, dueAt, type, "due_today", null, null, reminderPolicy));
         }
         else if (comparison < 0)
         {

@@ -8,10 +8,7 @@ namespace Nagger.Host.Tests;
 
 public sealed class NaggerFactory : WebApplicationFactory<Program>
 {
-    private readonly string _databasePath = Path.Combine(
-        Path.GetTempPath(),
-        $"nagger-{Guid.NewGuid():N}.db"
-    );
+    private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"nagger-{Guid.NewGuid():N}.db");
     private readonly Action<IServiceCollection>? _configureServices;
 
     public NaggerFactory(Action<IServiceCollection>? configureServices = null) =>

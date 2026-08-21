@@ -30,19 +30,13 @@ public sealed class McpTaskTools(IMediator mediator)
             )
         ]
             string? dueAt,
-        [
-            RequiredAttribute,
-            Description("Required reminder policy: none, once, or weekly-until-done.")
-        ]
+        [RequiredAttribute, Description("Required reminder policy: none, once, or weekly-until-done.")]
             string? reminderPolicy,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
             McpTaskResponse.From(
-                await mediator.Send(
-                    new CreateOneShotTaskCommand(title, dueAt, reminderPolicy),
-                    cancellationToken
-                )
+                await mediator.Send(new CreateOneShotTaskCommand(title, dueAt, reminderPolicy), cancellationToken)
             )
         );
 
@@ -59,9 +53,7 @@ public sealed class McpTaskTools(IMediator mediator)
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
-            McpTaskResponse.From(
-                await mediator.Send(new CompleteOneShotTaskCommand(id), cancellationToken)
-            )
+            McpTaskResponse.From(await mediator.Send(new CompleteOneShotTaskCommand(id), cancellationToken))
         );
 
     [McpServerTool(
@@ -75,30 +67,19 @@ public sealed class McpTaskTools(IMediator mediator)
     public Task<CallToolResult> PauseOneShotTask(
         [Description("Identifier returned by create_one_shot_task or get_morning_report.")] long id,
         CancellationToken cancellationToken
-    ) =>
-        Run(async () =>
-            McpTaskResponse.From(
-                await mediator.Send(new PauseOneShotTaskCommand(id), cancellationToken)
-            )
-        );
+    ) => Run(async () => McpTaskResponse.From(await mediator.Send(new PauseOneShotTaskCommand(id), cancellationToken)));
 
     [McpServerTool(
         Name = "resume_one_shot_task",
         UseStructuredContent = true,
         OutputSchemaType = typeof(McpTaskResponse)
     )]
-    [Description(
-        "Use only to reactivate a paused one-shot task. It changes the task back to active."
-    )]
+    [Description("Use only to reactivate a paused one-shot task. It changes the task back to active.")]
     public Task<CallToolResult> ResumeOneShotTask(
         [Description("Identifier returned by create_one_shot_task or get_morning_report.")] long id,
         CancellationToken cancellationToken
     ) =>
-        Run(async () =>
-            McpTaskResponse.From(
-                await mediator.Send(new ResumeOneShotTaskCommand(id), cancellationToken)
-            )
-        );
+        Run(async () => McpTaskResponse.From(await mediator.Send(new ResumeOneShotTaskCommand(id), cancellationToken)));
 
     [McpServerTool(
         Name = "cancel_one_shot_task",
@@ -112,11 +93,7 @@ public sealed class McpTaskTools(IMediator mediator)
         [Description("Identifier returned by create_one_shot_task or get_morning_report.")] long id,
         CancellationToken cancellationToken
     ) =>
-        Run(async () =>
-            McpTaskResponse.From(
-                await mediator.Send(new CancelOneShotTaskCommand(id), cancellationToken)
-            )
-        );
+        Run(async () => McpTaskResponse.From(await mediator.Send(new CancelOneShotTaskCommand(id), cancellationToken)));
 
     [McpServerTool(
         Name = "list_one_shot_tasks",
@@ -144,19 +121,11 @@ public sealed class McpTaskTools(IMediator mediator)
     )]
     public Task<CallToolResult> CreateRecurringTask(
         [RequiredAttribute, Description("Required nonempty task title.")] string? title,
-        [RequiredAttribute, Description("Required first due date in YYYY-MM-DD format.")]
-            string? startDate,
-        [
-            RequiredAttribute,
-            Description("Required positive interval between recurrences, for example 1.")
-        ]
+        [RequiredAttribute, Description("Required first due date in YYYY-MM-DD format.")] string? startDate,
+        [RequiredAttribute, Description("Required positive interval between recurrences, for example 1.")]
             int? recurrenceEvery,
-        [RequiredAttribute, Description("Required recurrence unit: days, weeks, or months.")]
-            string? recurrenceUnit,
-        [
-            RequiredAttribute,
-            Description("Required reminder policy: none, once, or weekly-until-done.")
-        ]
+        [RequiredAttribute, Description("Required recurrence unit: days, weeks, or months.")] string? recurrenceUnit,
+        [RequiredAttribute, Description("Required reminder policy: none, once, or weekly-until-done.")]
             string? reminderPolicy,
         CancellationToken cancellationToken
     ) =>
@@ -183,8 +152,7 @@ public sealed class McpTaskTools(IMediator mediator)
         "Use when the user says an active recurring-task instance is finished. Takes the recurring task template id returned by list_recurring_tasks, marks the template's current active instance done, and schedules the next instance from the template's recurrence."
     )]
     public Task<CallToolResult> CompleteRecurringTask(
-        [Description("Template id returned by create_recurring_task or list_recurring_tasks.")]
-            long id,
+        [Description("Template id returned by create_recurring_task or list_recurring_tasks.")] long id,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
@@ -202,14 +170,11 @@ public sealed class McpTaskTools(IMediator mediator)
         "Use when the user wants to temporarily stop an active recurring task. Pauses the template and its current instance; it can later be resumed."
     )]
     public Task<CallToolResult> PauseRecurringTask(
-        [Description("Identifier returned by create_recurring_task or list_recurring_tasks.")]
-            long id,
+        [Description("Identifier returned by create_recurring_task or list_recurring_tasks.")] long id,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
-            McpRecurringTemplateResponse.From(
-                await mediator.Send(new PauseRecurringTaskCommand(id), cancellationToken)
-            )
+            McpRecurringTemplateResponse.From(await mediator.Send(new PauseRecurringTaskCommand(id), cancellationToken))
         );
 
     [McpServerTool(
@@ -221,8 +186,7 @@ public sealed class McpTaskTools(IMediator mediator)
         "Use only to reactivate a paused recurring task. Sets the template and its current instance back to active."
     )]
     public Task<CallToolResult> ResumeRecurringTask(
-        [Description("Identifier returned by create_recurring_task or list_recurring_tasks.")]
-            long id,
+        [Description("Identifier returned by create_recurring_task or list_recurring_tasks.")] long id,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
@@ -240,8 +204,7 @@ public sealed class McpTaskTools(IMediator mediator)
         "Use when the user no longer wants a recurring task to continue. Cancels the template and all its generated instances; it cannot be resumed."
     )]
     public Task<CallToolResult> CancelRecurringTask(
-        [Description("Identifier returned by create_recurring_task or list_recurring_tasks.")]
-            long id,
+        [Description("Identifier returned by create_recurring_task or list_recurring_tasks.")] long id,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
@@ -278,17 +241,13 @@ public sealed class McpTaskTools(IMediator mediator)
     public Task<CallToolResult> GetMorningReport(
         [
             RequiredAttribute,
-            Description(
-                "Required report date in YYYY-MM-DD format, interpreted in the configured timezone."
-            )
+            Description("Required report date in YYYY-MM-DD format, interpreted in the configured timezone.")
         ]
             string? date,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
-            McpMorningReportResponse.From(
-                await mediator.Send(new MorningReportQuery(date), cancellationToken)
-            )
+            McpMorningReportResponse.From(await mediator.Send(new MorningReportQuery(date), cancellationToken))
         );
 
     private static async Task<CallToolResult> Run<T>(Func<Task<T>> action)
@@ -298,10 +257,7 @@ public sealed class McpTaskTools(IMediator mediator)
             var response = await action();
             return new CallToolResult
             {
-                Content =
-                [
-                    new TextContentBlock { Text = JsonSerializer.Serialize(response, JsonOptions) },
-                ],
+                Content = [new TextContentBlock { Text = JsonSerializer.Serialize(response, JsonOptions) }],
                 StructuredContent = JsonSerializer.SerializeToElement(response, JsonOptions),
             };
         }
@@ -368,10 +324,7 @@ public sealed record McpRecurringTemplateResponse(
             template.Id,
             template.Title,
             template.StartDate.ToString("yyyy-MM-dd"),
-            new McpRecurrenceRuleResponse(
-                template.Recurrence.Every,
-                template.Recurrence.Unit.ToContractValue()
-            ),
+            new McpRecurrenceRuleResponse(template.Recurrence.Every, template.Recurrence.Unit.ToContractValue()),
             template.ReminderPolicy.ToContractValue(),
             template.Status.ToContractValue(),
             template.CreatedAt,

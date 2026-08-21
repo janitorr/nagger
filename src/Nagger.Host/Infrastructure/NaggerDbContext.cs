@@ -5,10 +5,8 @@ namespace Nagger.Host.Infrastructure;
 public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) : DbContext(options)
 {
     public DbSet<TaskEntity> Tasks => Set<TaskEntity>();
-    public DbSet<RecurringTaskTemplateEntity> RecurringTaskTemplates =>
-        Set<RecurringTaskTemplateEntity>();
-    public DbSet<RecurringTaskInstanceEntity> RecurringTaskInstances =>
-        Set<RecurringTaskInstanceEntity>();
+    public DbSet<RecurringTaskTemplateEntity> RecurringTaskTemplates => Set<RecurringTaskTemplateEntity>();
+    public DbSet<RecurringTaskInstanceEntity> RecurringTaskInstances => Set<RecurringTaskInstanceEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
