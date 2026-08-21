@@ -6,6 +6,7 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
 {
     public DbSet<TaskEntity> Tasks => Set<TaskEntity>();
     public DbSet<RecurringTaskTemplateEntity> RecurringTaskTemplates => Set<RecurringTaskTemplateEntity>();
+    public DbSet<RecurringTaskInstanceEntity> RecurringTaskInstances => Set<RecurringTaskInstanceEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +31,17 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
         template.Property(x => x.Status).IsRequired();
         template.Property(x => x.CreatedAt).IsRequired();
         template.Property(x => x.UpdatedAt).IsRequired();
+
+        var instance = modelBuilder.Entity<RecurringTaskInstanceEntity>();
+        instance.ToTable("recurring_task_instances");
+        instance.HasKey(x => x.Id);
+        instance.Property(x => x.RecurringTaskId).IsRequired();
+        instance.Property(x => x.Title).IsRequired();
+        instance.Property(x => x.DueAt).IsRequired();
+        instance.Property(x => x.ReminderPolicy).IsRequired();
+        instance.Property(x => x.Status).IsRequired();
+        instance.Property(x => x.CreatedAt).IsRequired();
+        instance.Property(x => x.UpdatedAt).IsRequired();
     }
 }
 
@@ -45,7 +57,20 @@ public sealed class TaskEntity
     public required string Status { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
     public DateTimeOffset? CancelledAt { get; set; }
-    public long? RecurringTaskId { get; set; }
+}
+
+public sealed class RecurringTaskInstanceEntity
+{
+    public long Id { get; set; }
+    public long RecurringTaskId { get; set; }
+    public required string Title { get; set; }
+    public DateTimeOffset DueAt { get; set; }
+    public required string ReminderPolicy { get; set; }
+    public required string Status { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public DateTimeOffset? CancelledAt { get; set; }
 }
 
 public sealed class RecurringTaskTemplateEntity

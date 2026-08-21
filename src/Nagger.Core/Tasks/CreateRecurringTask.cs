@@ -11,7 +11,7 @@ public sealed record CreateRecurringTaskCommand(
 
 public sealed record RecurrenceRuleInput(int? Every, string? Unit);
 
-public sealed class CreateRecurringTaskHandler(IRecurringTaskTemplateStore templateStore, ITaskStore taskStore, IClock clock)
+public sealed class CreateRecurringTaskHandler(IRecurringTaskTemplateStore templateStore, IRecurringTaskInstanceStore instanceStore, IClock clock)
     : ICommandHandler<CreateRecurringTaskCommand, RecurringTaskTemplate>
 {
     public async ValueTask<RecurringTaskTemplate> Handle(CreateRecurringTaskCommand command, CancellationToken cancellationToken)
@@ -53,17 +53,17 @@ public sealed class CreateRecurringTaskHandler(IRecurringTaskTemplateStore templ
             CreatedAt: now,
             UpdatedAt: now), cancellationToken);
 
-        var firstInstance = new TaskItem(
+        var firstInstance = new RecurringTaskInstance(
             Id: 0,
+            RecurringTaskId: createdTemplate.Id,
             Title: createdTemplate.Title,
             DueAt: createdTemplate.StartDate.ToDateTimeOffset(clock.TimeZone),
             ReminderPolicy: createdTemplate.ReminderPolicy,
             CreatedAt: now,
             UpdatedAt: now,
-            Status: OneShotTaskStatus.Active,
-            RecurringTaskId: createdTemplate.Id);
+            Status: RecurringTaskInstanceStatus.Active);
 
-        await taskStore.AddAsync(firstInstance, cancellationToken);
+        await instanceStore.AddAsync(firstInstance, cancellationToken);
 
         return createdTemplate;
     }

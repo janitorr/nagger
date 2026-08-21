@@ -13,6 +13,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<ITaskStore, SqliteTaskStore>();
         services.AddSingleton<IClock, ConfiguredClock>();
         services.AddScoped<IRecurringTaskTemplateStore, SqliteRecurringTaskTemplateStore>();
+        services.AddScoped<IRecurringTaskInstanceStore, SqliteRecurringTaskInstanceStore>();
         return services;
     }
 }

@@ -24,7 +24,7 @@ endpoint exposes these tools:
 | `cancel_one_shot_task` | Cancel an active or paused reminder by `id`. |
 | `list_one_shot_tasks` | Discover active and paused reminders and their lifecycle-tool `id` values. |
 | `create_recurring_task` | Create a recurring template from `title`, `startDate`, `recurrenceEvery`, `recurrenceUnit`, and `reminderPolicy`. |
-| `complete_recurring_task` | Complete a recurring-task instance by `id`; schedules the next instance. |
+| `complete_recurring_task` | Complete a recurring template's current active instance by template `id`; schedules the next instance. |
 | `pause_recurring_task` | Pause a recurring template and its current instance by template `id`. |
 | `resume_recurring_task` | Resume a paused recurring template and its current instance by template `id`. |
 | `cancel_recurring_task` | Cancel a recurring template and all its instances by template `id`. |
@@ -116,7 +116,7 @@ curl http://localhost:5246/tasks/one-shot
 
 ## Recurring Tasks
 
-Recurring tasks are templates that repeatedly generate one-shot task instances. Creating a template immediately creates the first instance due on the start date; completing an instance schedules the next one. Templates themselves never appear in reports — only their generated instances do.
+Recurring tasks are templates that repeatedly generate recurring-task instances. Creating a template immediately creates the first instance due on the start date; completing the template's current instance schedules the next one. Instances live in their own store and never appear in `/tasks/one-shot`. Reports include recurring obligations under their template id, distinguished from one-shot tasks by a `type` field.
 
 ### Create A Recurring Template
 
@@ -171,18 +171,18 @@ These endpoints have no request body and return `200 OK` with the affected repre
 
 | Action | Endpoint | `id` refers to | Result |
 | --- | --- | --- | --- |
-| Complete | `POST /tasks/recurring/{id}/complete` | the instance id | Marks the instance done and creates the next instance (completion date + interval). Returns the completed instance. |
+| Complete | `POST /tasks/recurring/{id}/complete` | the template id | Completes the template's current active instance and creates the next instance (completion date + interval). Returns the completed recurring instance. |
 | Pause | `POST /tasks/recurring/{id}/pause` | the template id | Sets the template to `paused` and pauses its current instance. Returns the template. |
 | Resume | `POST /tasks/recurring/{id}/resume` | the template id | Sets the template back to `active` and resumes its current instance. Returns the template. |
 | Cancel | `POST /tasks/recurring/{id}/cancel` | the template id | Sets the template to `cancelled`, sets `cancelledAt`, and cancels all its open instances. Returns the template. |
 
-Completing a non-recurring task, pausing a paused template, or resuming an active template returns a `400 Bad Request` validation error. An unknown instance or template id returns `404 Not Found`.
+All lifecycle endpoints resolve `{id}` as the **template id**. Completing a template with no active instance, pausing a paused template, or resuming an active template returns a `400 Bad Request` validation error. An unknown template id returns `404 Not Found`.
 
 ### List Recurring Templates
 
 `GET /tasks/recurring`
 
-Returns `200 OK` with an array of template representations ordered by ascending `id`; `[]` when none exist. Use the returned `id` as the template id for lifecycle actions, and `/tasks/one-shot` to discover the generated instance ids.
+Returns `200 OK` with an array of template representations ordered by ascending `id`; `[]` when none exist. Use the returned `id` as the template id for all recurring lifecycle actions (pause, resume, cancel, and complete).
 
 ```bash
 curl http://localhost:5246/tasks/recurring
@@ -202,7 +202,7 @@ Response: `200 OK`
 
 ```json
 {
-  "schemaVersion": "2",
+  "schemaVersion": "3",
   "generatedAt": "2026-08-03T10:00:00+00:00",
   "date": "2026-08-04",
   "summary": {
@@ -215,6 +215,7 @@ Response: `200 OK`
       "id": 1,
       "title": "Pay rent",
       "dueAt": "2026-08-04T09:00:00+03:00",
+      "type": "one-shot",
       "dueState": "due_today",
       "daysOverdue": null,
       "daysUntilDue": null,
@@ -224,6 +225,7 @@ Response: `200 OK`
       "id": 2,
       "title": "Submit expense report",
       "dueAt": "2026-08-02T09:00:00+03:00",
+      "type": "one-shot",
       "dueState": "overdue",
       "daysOverdue": 2,
       "daysUntilDue": null,
@@ -231,8 +233,9 @@ Response: `200 OK`
     },
     {
       "id": 3,
-      "title": "Review insurance renewal",
+      "title": "Team sync",
       "dueAt": "2026-08-07T09:00:00+03:00",
+      "type": "recurring",
       "dueState": "upcoming",
       "daysOverdue": null,
       "daysUntilDue": 3,

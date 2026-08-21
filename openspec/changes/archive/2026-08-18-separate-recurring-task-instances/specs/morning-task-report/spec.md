@@ -1,8 +1,4 @@
-## Purpose
-
-Provide deterministic, versioned morning task data for downstream digest generation.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Produce a versioned morning task report
 The service SHALL provide `GET /reports/morning?date=YYYY-MM-DD`. For a valid requested date, it SHALL return JSON with `schemaVersion` of `"3"`, `generatedAt`, `date`, a task summary with counts for `dueToday`, `overdue`, and `upcoming`, and task item detail for active tasks that are overdue, due today, or due within the inclusive seven-calendar-day window after the requested date. Each task item SHALL use camelCase fields including `type`, `dueAt`, `dueState`, `daysOverdue`, `daysUntilDue`, and `reminderPolicy`.
@@ -32,17 +28,3 @@ For an overdue item, `daysOverdue` SHALL contain the positive local calendar-day
 #### Scenario: Report a recurring task under its template id
 - **WHEN** an active recurring task template has a current active instance whose due timestamp falls within the report window
 - **THEN** the report includes the task with `type` of `recurring` and the template id, and increments the corresponding summary count
-
-### Requirement: Keep report reads free of state changes
-Generating a morning report SHALL NOT create, update, or delete tasks, and SHALL NOT update task timestamps or reminder state.
-
-#### Scenario: Read a report repeatedly
-- **WHEN** a client requests the same morning report more than once
-- **THEN** task records and reminder timestamps remain unchanged by each report read
-
-### Requirement: Validate the report date
-The service SHALL reject a morning report request without a `date` query parameter or with a date that is not formatted as `YYYY-MM-DD`.
-
-#### Scenario: Reject an invalid report date
-- **WHEN** a client requests the morning report with a missing or malformed date
-- **THEN** the service returns a structured JSON validation error and does not modify task state

@@ -57,10 +57,10 @@ public sealed class McpTaskTools(IMediator mediator)
         CancellationToken cancellationToken) =>
         Run(async () => McpRecurringTemplateResponse.From(await mediator.Send(new CreateRecurringTaskCommand(title, startDate, new RecurrenceRuleInput(recurrenceEvery, recurrenceUnit), reminderPolicy), cancellationToken)));
 
-    [McpServerTool(Name = "complete_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpTaskResponse))]
-    [Description("Use when the user says an active recurring-task instance is finished. Marks it done and schedules the next instance from the template's recurrence.")]
-    public Task<CallToolResult> CompleteRecurringTask([Description("Identifier of the recurring-task instance returned by list_one_shot_tasks or the morning report.")] long id, CancellationToken cancellationToken) =>
-        Run(async () => McpTaskResponse.From(await mediator.Send(new CompleteRecurringTaskCommand(id), cancellationToken)));
+    [McpServerTool(Name = "complete_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringInstanceResponse))]
+    [Description("Use when the user says an active recurring-task instance is finished. Takes the recurring task template id returned by list_recurring_tasks, marks the template's current active instance done, and schedules the next instance from the template's recurrence.")]
+    public Task<CallToolResult> CompleteRecurringTask([Description("Template id returned by create_recurring_task or list_recurring_tasks.")] long id, CancellationToken cancellationToken) =>
+        Run(async () => McpRecurringInstanceResponse.From(await mediator.Send(new CompleteRecurringTaskCommand(id), cancellationToken)));
 
     [McpServerTool(Name = "pause_recurring_task", UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse))]
     [Description("Use when the user wants to temporarily stop an active recurring task. Pauses the template and its current instance; it can later be resumed.")]
@@ -78,12 +78,12 @@ public sealed class McpTaskTools(IMediator mediator)
         Run(async () => McpRecurringTemplateResponse.From(await mediator.Send(new CancelRecurringTaskCommand(id), cancellationToken)));
 
     [McpServerTool(Name = "list_recurring_tasks", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpRecurringTemplateResponse[]))]
-    [Description("Use to discover recurring task templates. Each returned id is the identifier required by pause, resume, and cancel recurring lifecycle tools. To complete an instance, use list_one_shot_tasks or the morning report to get the instance id.")]
+    [Description("Use to discover recurring task templates. Each returned id is the template id required by the pause, resume, cancel, and complete recurring lifecycle tools.")]
     public Task<CallToolResult> ListRecurringTasks(CancellationToken cancellationToken) =>
         Run(async () => (await mediator.Send(new ListRecurringTemplatesQuery(), cancellationToken)).Select(McpRecurringTemplateResponse.From).ToArray());
 
     [McpServerTool(Name = "get_morning_report", ReadOnly = true, UseStructuredContent = true, OutputSchemaType = typeof(McpMorningReportResponse))]
-    [Description("Use to review active one-shot tasks for a specific date in the configured timezone. Returns due-today and overdue tasks plus upcoming tasks within the next seven days, with daysOverdue/daysUntilDue timing fields, without changing task state.")]
+    [Description("Use to review active one-shot tasks and recurring obligations for a specific date in the configured timezone. Returns due-today and overdue items plus upcoming items within the next seven days, with a type field distinguishing one-shot (one-shot task id) from recurring (recurring template id) items, and daysOverdue/daysUntilDue timing fields, without changing task state.")]
     public Task<CallToolResult> GetMorningReport([RequiredAttribute, Description("Required report date in YYYY-MM-DD format, interpreted in the configured timezone.")] string? date, CancellationToken cancellationToken) =>
         Run(async () => McpMorningReportResponse.From(await mediator.Send(new MorningReportQuery(date), cancellationToken)));
 
@@ -159,6 +159,33 @@ public sealed record McpRecurringTemplateResponse(
 
 public sealed record McpRecurrenceRuleResponse(int Every, string Unit);
 
+public sealed record McpRecurringInstanceResponse(
+    long Id,
+    long RecurringTaskId,
+    string Title,
+    string Type,
+    string Status,
+    DateTimeOffset DueAt,
+    string ReminderPolicy,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset? CancelledAt)
+{
+    public static McpRecurringInstanceResponse From(RecurringTaskInstance instance) => new(
+        instance.Id,
+        instance.RecurringTaskId,
+        instance.Title,
+        "recurring",
+        instance.Status.ToContractValue(),
+        instance.DueAt,
+        instance.ReminderPolicy.ToContractValue(),
+        instance.CreatedAt,
+        instance.UpdatedAt,
+        instance.CompletedAt,
+        instance.CancelledAt);
+}
+
 public sealed record McpMorningReportResponse(
     string SchemaVersion,
     DateTimeOffset GeneratedAt,
@@ -171,9 +198,9 @@ public sealed record McpMorningReportResponse(
         report.GeneratedAt,
         report.Date.ToString("yyyy-MM-dd"),
         new McpMorningReportSummaryResponse(report.Summary.DueToday, report.Summary.Overdue, report.Summary.Upcoming),
-        report.Items.Select(item => new McpMorningReportItemResponse(item.Id, item.Title, item.DueAt, item.DueState, item.DaysOverdue, item.DaysUntilDue, item.ReminderPolicy)).ToList());
+        report.Items.Select(item => new McpMorningReportItemResponse(item.Id, item.Title, item.DueAt, item.Type, item.DueState, item.DaysOverdue, item.DaysUntilDue, item.ReminderPolicy)).ToList());
 }
 
 public sealed record McpMorningReportSummaryResponse(int DueToday, int Overdue, int Upcoming);
 
-public sealed record McpMorningReportItemResponse(long Id, string Title, DateTimeOffset DueAt, string DueState, int? DaysOverdue, int? DaysUntilDue, string ReminderPolicy);
+public sealed record McpMorningReportItemResponse(long Id, string Title, DateTimeOffset DueAt, string Type, string DueState, int? DaysOverdue, int? DaysUntilDue, string ReminderPolicy);
