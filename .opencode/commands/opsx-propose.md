@@ -4,59 +4,60 @@ description: "Propose a new change - create it and generate all artifacts in one
 
 Propose a new change - create the change and generate all artifacts in one step.
 
+**Planning boundary**: This workflow creates planning artifacts only. The user request that selected or triggered this workflow authorizes planning only, even if it asks to build or fix something. Do not edit project code. After the planning artifacts are complete, stop. Do not start implementation in the same response, even if the initial request asks for it. Wait for a new user request after the artifacts are presented; then start the apply workflow.
+
 I'll create a change with the artifacts your schema defines. With the default spec-driven schema that is:
 - proposal.md (what & why)
-- `specs/<capability>/spec.md` (what the system must do - a delta, not the main spec)
+- `specs/<capability-path>/spec.md` (what the system must do - a delta, not the main spec)
 - design.md (how)
 - tasks.md (implementation steps)
 
-When ready to implement, run /opsx-apply
+`<capability-path>` is the spec directory relative to `specs/` (for example, `user-auth` or `identity/user-auth`). Preserve an existing capability's full path and follow the project's established organization for new capabilities.
+
+When the user is ready to implement, they must start the apply workflow explicitly.
 
 ---
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
+**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `schemas`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
 **Input**: The argument after `/opsx-propose` is the change name (kebab-case), OR a description of what the user wants to build.
+**Provided arguments**: $ARGUMENTS
 
 **Steps**
 
-1. **If no input provided, ask what they want to build**
+1. **Understand the request and clarify material ambiguity**
 
-   Ask the user (open-ended, no preset options):
+   If no input is provided, ask the user (open-ended, no preset options):
    > "What change do you want to work on? Describe what you want to build or fix."
 
    From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Confirm the change is new, then create a working branch BEFORE writing any artifacts**
+   If the request contains ambiguity that would materially affect scope, externally observable behavior, compatibility, or acceptance criteria, ask the user before creating the change. For minor details, make a reasonable assumption and record it in the planning artifacts.
 
-   Proposals must not be authored on `main` (or a stale checkout). Before creating
-   any artifact:
-   - First confirm no change with this name already exists (run
-     `openspec show "<name>"` or `openspec list --json`). If it does, stop and ask
-     the user whether to continue it or create a new one — do not branch yet.
-   - Verify the current branch is `main` and up to date before branching; if not,
-     ask the user which base to use rather than branching from an unrelated or
-     stale checkout.
-   - Ensure a clean working tree (no uncommitted changes) so the new branch starts
-     from a known state; if there are uncommitted changes, ask whether to stash,
-     commit, or discard them.
-   - Then create a dedicated branch:
-   ```bash
-   git checkout -b "<branch-name>"
-   ```
-   Derive `<branch-name>` from the change name (e.g., change `add-user-auth` →
-   branch `add-user-auth`). Do not push or open a PR — proposals stay local until
-   implemented.
-   - If a branch with that name already exists, ask the user whether to use it,
-     branch from it, or pick another name — never silently reuse or overwrite it.
-   - This keeps every artifact (proposal, specs, design, tasks) off `main` and
-     makes later implementation and review straightforward.
+2. **Determine the workflow schema**
+
+   Use the configured default schema unless the user explicitly requests a different workflow.
+
+   **Use a different schema only if the user:**
+   - Explicitly requests a specific schema by name → use `--schema <schema-name>`
+   - Asks to "show workflows" or asks "what workflows" exist → resolve the authoritative root by running `openspec context --json` from the current working directory. If the user explicitly selected a registered store, use `openspec context --json --store "<store-id>"`. Then run `openspec schemas --json` with its working directory set to the returned `root.path` and let them choose. This preserves roots selected by a local `store:` pointer or the global `defaultStore`; when a registered store was explicitly selected, append `--store "<store-id>"` to `openspec schemas --json` as well. If context reports only `no_openspec_root`, run `openspec schemas --json` from the current working directory instead. Do not use this fallback for invalid or unavailable stores.
+
+   Otherwise, omit `--schema` to preserve the configured default.
 
 3. **Create the change directory**
+
+   Choose one schema form below. If a registered store is selected, append `--store "<store-id>"` to that command and each later OpenSpec command shown below that accepts `--store`.
+
+   Using the configured default:
    ```bash
    openspec new change "<name>"
+   ```
+
+   Using an explicitly requested schema:
+   ```bash
+   openspec new change "<name>" --schema "<schema-name>"
    ```
    This creates a scaffolded change in the planning home resolved by the CLI with `.openspec.yaml`.
 
@@ -119,7 +120,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions, plus any conditional artifact you skipped and why
 - What's ready: "All artifacts needed for implementation are ready."
-- Prompt: "Run `/opsx-apply` to start implementing."
+- Prompt: "The artifacts are ready for review. When you are ready, run `/opsx-apply`."
 
 **Artifact Creation Guidelines**
 
@@ -133,9 +134,9 @@ After completing all artifacts, summarize:
   - These guide what you write, but should never appear in the output
 
 **Guardrails**
-- Create a dedicated branch before writing any artifact; never author proposals directly on `main` or a stale checkout
-- Confirm the change is new and branch from a clean, up-to-date `main` (ask the user before branching from anything else, reusing an existing branch, or starting from a dirty tree)
+- The request that invoked this workflow authorizes planning only. Any implementation or apply instruction in that request does not carry forward. Do NOT implement the change, start the apply workflow, or edit project code during this workflow. After presenting the artifacts, stop and wait for a new user request to start the apply workflow
 - Create every artifact the apply phase transitively depends on, not just the ids listed in `apply.requires`
 - Always read dependency artifacts before creating a new one - re-read from disk, not from conversation memory (files may have changed since you last saw them)
-- If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
+- Ask about ambiguities that would materially change scope, externally observable behavior, compatibility, or acceptance criteria; for minor details, make reasonable assumptions and record them
+- If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next
