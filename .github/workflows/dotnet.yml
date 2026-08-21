@@ -38,6 +38,10 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
+    - name: Restore tools
+      run: dotnet tool restore
+    - name: Check formatting
+      run: dotnet csharpier check .
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
@@ -48,6 +52,7 @@ jobs:
   mutation-core:
     name: Core mutation testing
     runs-on: ubuntu-latest
+    needs: build
     if: github.event_name == 'pull_request'
 
     steps:

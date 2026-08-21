@@ -54,6 +54,22 @@ dotnet test tests/Nagger.Host.Tests/Nagger.Host.Tests.csproj
 
 Host integration tests use temporary SQLite databases and do not require a running service.
 
+## Formatting
+
+Code is formatted with CSharpier (pinned as a local .NET tool). Format the codebase before committing:
+
+```bash
+dotnet csharpier format .
+```
+
+CI enforces formatting with `dotnet csharpier check .`; run it locally to verify:
+
+```bash
+dotnet csharpier check .
+```
+
+The one-time reformat commit is listed in `.git-blame-ignore-revs` so it does not pollute `git blame`.
+
 ## Mutation Testing
 
 Run mutation testing for Core behavior and its focused test suite:
