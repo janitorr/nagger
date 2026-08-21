@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nagger.Core.Tasks;
+using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Host.Infrastructure;
 

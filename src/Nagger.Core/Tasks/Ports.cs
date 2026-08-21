@@ -1,3 +1,5 @@
+using Nagger.Core.Tasks.Domain;
+
 namespace Nagger.Core.Tasks;
 
 public interface ITaskStore

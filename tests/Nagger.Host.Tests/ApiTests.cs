@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Nagger.Core.Tasks;
+using Nagger.Core.Tasks.Domain;
 using Nagger.Host;
 using Nagger.Host.Infrastructure;
 using Shouldly;

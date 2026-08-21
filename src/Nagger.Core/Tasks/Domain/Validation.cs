@@ -1,4 +1,4 @@
-namespace Nagger.Core.Tasks;
+namespace Nagger.Core.Tasks.Domain;
 
 public sealed class ValidationException(IReadOnlyDictionary<string, string[]> errors) : Exception("Validation failed")
 {
