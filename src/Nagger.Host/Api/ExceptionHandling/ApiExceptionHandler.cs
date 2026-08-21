@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Nagger.Core.Tasks;
+using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Host.Api.ExceptionHandling;
 

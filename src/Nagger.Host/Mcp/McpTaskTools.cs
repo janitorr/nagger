@@ -4,6 +4,7 @@ using Mediator;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Nagger.Core.Tasks;
+using Nagger.Core.Tasks.Domain;
 using RequiredAttribute = System.ComponentModel.DataAnnotations.RequiredAttribute;
 
 namespace Nagger.Host.Mcp;

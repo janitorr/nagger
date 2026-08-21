@@ -1,4 +1,5 @@
 using Mediator;
+using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Core.Tasks;
 

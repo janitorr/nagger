@@ -1,4 +1,4 @@
-namespace Nagger.Core.Tasks;
+namespace Nagger.Core.Tasks.Domain;
 
 public static class RecurrenceCalculator
 {

@@ -1,4 +1,5 @@
 using Nagger.Core.Tasks;
+using Nagger.Core.Tasks.Domain;
 using Shouldly;
 
 namespace Nagger.Core.Tests;
