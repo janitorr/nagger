@@ -56,7 +56,7 @@ Host integration tests use temporary SQLite databases and do not require a runni
 
 ## Formatting
 
-Code is formatted with CSharpier (pinned as a local .NET tool). Format the codebase before committing:
+Code is formatted with CSharpier (pinned as a local .NET tool) using a 120-column print width, configured in `.csharpierrc`. Format the codebase before committing:
 
 ```bash
 dotnet csharpier format .
@@ -68,7 +68,7 @@ CI enforces formatting with `dotnet csharpier check .`; run it locally to verify
 dotnet csharpier check .
 ```
 
-The one-time reformat commit is listed in `.git-blame-ignore-revs` so it does not pollute `git blame`.
+Mechanical reformat commits are listed in `.git-blame-ignore-revs` so they do not pollute `git blame`.
 
 ## Mutation Testing
 
