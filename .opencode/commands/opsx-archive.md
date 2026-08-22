@@ -1,5 +1,7 @@
 ---
 description: "Archive a completed change in the experimental workflow"
+agent: build
+model: opencode-go/deepseek-v4-flash
 ---
 
 Archive a completed change in the experimental workflow.
