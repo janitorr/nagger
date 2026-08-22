@@ -44,7 +44,7 @@ public sealed class RecurringTaskFeatureTests
     {
         var instanceStore = new MemoryRecurringTaskInstanceStore();
         var templateStore = new MemoryRecurringTemplateStore();
-        var handler = new CreateRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new CreateRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var template = await handler.Handle(
             new("Team sync", "2026-08-04", new RecurrenceRuleInput(1, "weeks"), "once"),
@@ -85,7 +85,7 @@ public sealed class RecurringTaskFeatureTests
     {
         var instanceStore = new MemoryRecurringTaskInstanceStore();
         var templateStore = new MemoryRecurringTemplateStore();
-        var handler = new CreateRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new CreateRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
             await handler.Handle(new(title, startDate, new RecurrenceRuleInput(every, unit), policy), default)
@@ -105,7 +105,7 @@ public sealed class RecurringTaskFeatureTests
         var handler = new CreateRecurringTaskHandler(
             new MemoryRecurringTemplateStore(),
             instanceStore,
-            new TestClock()
+            new TestTimeProvider()
         );
 
         var template = await handler.Handle(
@@ -123,7 +123,7 @@ public sealed class RecurringTaskFeatureTests
         var handler = new CreateRecurringTaskHandler(
             new MemoryRecurringTemplateStore(),
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock()
+            new TestTimeProvider()
         );
 
         var template = await handler.Handle(
@@ -140,7 +140,7 @@ public sealed class RecurringTaskFeatureTests
         var handler = new CreateRecurringTaskHandler(
             new MemoryRecurringTemplateStore(),
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock()
+            new TestTimeProvider()
         );
 
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
@@ -176,7 +176,7 @@ public sealed class RecurringTaskFeatureTests
                 default
             )
         );
-        var handler = new CompleteRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new CompleteRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var completed = await handler.Handle(new(1), default);
 
@@ -206,7 +206,7 @@ public sealed class RecurringTaskFeatureTests
             )
         );
         var templateStore = new MemoryRecurringTemplateStore(Template());
-        var handler = new CompleteRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new CompleteRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var exception = await Should.ThrowAsync<ValidationException>(async () => await handler.Handle(new(1), default));
 
@@ -220,7 +220,7 @@ public sealed class RecurringTaskFeatureTests
         var handler = new CompleteRecurringTaskHandler(
             new MemoryRecurringTemplateStore(),
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock()
+            new TestTimeProvider()
         );
 
         await Should.ThrowAsync<RecurringTaskNotFoundException>(async () => await handler.Handle(new(42), default));
@@ -233,7 +233,7 @@ public sealed class RecurringTaskFeatureTests
         var instanceStore = new MemoryRecurringTaskInstanceStore(
             new RecurringTaskInstance(1, 1, "Team sync", default, ReminderPolicy.Once, default, default)
         );
-        var handler = new PauseRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new PauseRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var updated = await handler.Handle(new(1), default);
 
@@ -258,7 +258,7 @@ public sealed class RecurringTaskFeatureTests
                 Status: RecurringTaskInstanceStatus.Paused
             )
         );
-        var handler = new PauseRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new PauseRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var updated = await handler.Handle(new(1), default);
 
@@ -271,7 +271,7 @@ public sealed class RecurringTaskFeatureTests
     {
         var templateStore = new MemoryRecurringTemplateStore(Template(status: RecurringTaskStatus.Paused));
         var instanceStore = new MemoryRecurringTaskInstanceStore();
-        var handler = new PauseRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new PauseRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var exception = await Should.ThrowAsync<ValidationException>(async () => await handler.Handle(new(1), default));
 
@@ -296,7 +296,7 @@ public sealed class RecurringTaskFeatureTests
                 Status: RecurringTaskInstanceStatus.Paused
             )
         );
-        var handler = new ResumeRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new ResumeRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var updated = await handler.Handle(new(1), default);
 
@@ -312,7 +312,7 @@ public sealed class RecurringTaskFeatureTests
         var instanceStore = new MemoryRecurringTaskInstanceStore(
             new RecurringTaskInstance(1, 1, "Team sync", default, ReminderPolicy.Once, default, default)
         );
-        var handler = new ResumeRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new ResumeRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var updated = await handler.Handle(new(1), default);
 
@@ -325,7 +325,7 @@ public sealed class RecurringTaskFeatureTests
     {
         var templateStore = new MemoryRecurringTemplateStore(Template());
         var instanceStore = new MemoryRecurringTaskInstanceStore();
-        var handler = new ResumeRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new ResumeRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var exception = await Should.ThrowAsync<ValidationException>(async () => await handler.Handle(new(1), default));
 
@@ -360,7 +360,7 @@ public sealed class RecurringTaskFeatureTests
                 Status: RecurringTaskInstanceStatus.Done
             )
         );
-        var handler = new CancelRecurringTaskHandler(templateStore, instanceStore, new TestClock());
+        var handler = new CancelRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
 
         var updated = await handler.Handle(new(1), default);
 
@@ -427,7 +427,7 @@ public sealed class RecurringTaskFeatureTests
     public async Task CompleteOneShotTask_GivenTask_WhenCompleteRequested_ThenDoesNotCreateRecurringInstance()
     {
         var taskStore = new MemoryStore(new TaskItem(1, "Task", default, ReminderPolicy.None, default, default));
-        var handler = new CompleteOneShotTaskHandler(taskStore, new TestClock());
+        var handler = new CompleteOneShotTaskHandler(taskStore, new TestTimeProvider());
 
         var completed = await handler.Handle(new(1), default);
 
@@ -463,7 +463,11 @@ public sealed class RecurringTaskFeatureTests
                 default
             )
         );
-        var handler = new CompleteRecurringTaskHandler(templateStore, instanceStore, new TestClock(now, helsinki));
+        var handler = new CompleteRecurringTaskHandler(
+            templateStore,
+            instanceStore,
+            new TestTimeProvider(now, helsinki)
+        );
 
         var completed = await handler.Handle(new(1), default);
 
@@ -488,10 +492,11 @@ public sealed class RecurringTaskFeatureTests
             default
         );
 
-    private sealed class TestClock(DateTimeOffset? utcNow = null, TimeZoneInfo? timeZone = null) : IClock
+    private sealed class TestTimeProvider(DateTimeOffset? utcNow = null, TimeZoneInfo? timeZone = null) : TimeProvider
     {
-        public DateTimeOffset UtcNow => utcNow ?? new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
-        public TimeZoneInfo TimeZone => timeZone ?? TimeZoneInfo.Utc;
+        public override DateTimeOffset GetUtcNow() => utcNow ?? new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
+
+        public override TimeZoneInfo LocalTimeZone => timeZone ?? TimeZoneInfo.Utc;
     }
 
     private sealed class MemoryStore(params TaskItem[] tasks) : ITaskStore

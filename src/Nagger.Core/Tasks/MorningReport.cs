@@ -27,8 +27,11 @@ public sealed record MorningReportItem(
     string ReminderPolicy
 );
 
-public sealed class MorningReportHandler(ITaskStore store, IRecurringTaskInstanceStore instanceStore, IClock clock)
-    : IQueryHandler<MorningReportQuery, MorningReport>
+public sealed class MorningReportHandler(
+    ITaskStore store,
+    IRecurringTaskInstanceStore instanceStore,
+    TimeProvider timeProvider
+) : IQueryHandler<MorningReportQuery, MorningReport>
 {
     public async ValueTask<MorningReport> Handle(MorningReportQuery query, CancellationToken cancellationToken)
     {
@@ -59,7 +62,7 @@ public sealed class MorningReportHandler(ITaskStore store, IRecurringTaskInstanc
                 ref overdue,
                 ref upcoming,
                 reportDate,
-                clock.TimeZone,
+                timeProvider.LocalTimeZone,
                 task.Id,
                 task.Title,
                 task.DueAt,
@@ -73,7 +76,7 @@ public sealed class MorningReportHandler(ITaskStore store, IRecurringTaskInstanc
                 ref overdue,
                 ref upcoming,
                 reportDate,
-                clock.TimeZone,
+                timeProvider.LocalTimeZone,
                 instance.RecurringTaskId,
                 instance.Title,
                 instance.DueAt,
@@ -85,7 +88,7 @@ public sealed class MorningReportHandler(ITaskStore store, IRecurringTaskInstanc
 
         return new MorningReport(
             "3",
-            clock.UtcNow,
+            timeProvider.GetUtcNow(),
             reportDate,
             new MorningReportSummary(dueToday, overdue, upcoming),
             items

@@ -59,7 +59,7 @@ public sealed record RecurrenceRuleInput(int? Every, string? Unit);
 public sealed class CreateRecurringTaskHandler(
     IRecurringTaskTemplateStore templateStore,
     IRecurringTaskInstanceStore instanceStore,
-    IClock clock
+    TimeProvider timeProvider
 ) : ICommandHandler<CreateRecurringTaskCommand, RecurringTaskTemplate>
 {
     public async ValueTask<RecurringTaskTemplate> Handle(
@@ -69,7 +69,7 @@ public sealed class CreateRecurringTaskHandler(
     {
         var (title, startDate, recurrence, reminderPolicy) = command.Parse(Today());
 
-        var now = clock.UtcNow;
+        var now = timeProvider.GetUtcNow();
         var createdTemplate = await templateStore.AddAsync(
             new RecurringTaskTemplate(
                 Id: 0,
@@ -88,7 +88,7 @@ public sealed class CreateRecurringTaskHandler(
             Id: 0,
             RecurringTaskId: createdTemplate.Id,
             Title: createdTemplate.Title,
-            DueAt: createdTemplate.StartDate.ToDateTimeOffset(clock.TimeZone),
+            DueAt: createdTemplate.StartDate.ToDateTimeOffset(timeProvider.LocalTimeZone),
             ReminderPolicy: createdTemplate.ReminderPolicy,
             CreatedAt: now,
             UpdatedAt: now,
@@ -101,5 +101,7 @@ public sealed class CreateRecurringTaskHandler(
     }
 
     private DateOnly Today() =>
-        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(clock.UtcNow.UtcDateTime, clock.TimeZone));
+        DateOnly.FromDateTime(
+            TimeZoneInfo.ConvertTimeFromUtc(timeProvider.GetUtcNow().UtcDateTime, timeProvider.LocalTimeZone)
+        );
 }

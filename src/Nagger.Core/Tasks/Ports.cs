@@ -41,10 +41,3 @@ public interface IRecurringTaskInstanceStore
         CancellationToken cancellationToken
     );
 }
-
-public interface IClock
-{
-    DateTimeOffset UtcNow { get; }
-
-    TimeZoneInfo TimeZone { get; }
-}

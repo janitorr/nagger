@@ -6,7 +6,7 @@ namespace Nagger.Core.Tasks;
 
 public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt, string? ReminderPolicy) : ICommand<TaskItem>
 {
-    public (string Title, DateTimeOffset DueAt, ReminderPolicy ReminderPolicy) Parse()
+    public (string Title, DateTimeOffset DueAt, ReminderPolicy ReminderPolicy) Parse(DateTimeOffset now)
     {
         var errors = new Dictionary<string, string[]>();
         if (string.IsNullOrWhiteSpace(Title))
@@ -33,6 +33,9 @@ public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt, stri
         if (!ReminderPolicies.TryParse(ReminderPolicy, out var reminderPolicy))
             errors["reminderPolicy"] = ["Reminder policy must be none, once, or weekly-until-done."];
 
+        if (dueAt != default && dueAt < now)
+            errors["dueAt"] = ["Due timestamp cannot be in the past."];
+
         if (errors.Count > 0)
             throw new ValidationException(errors);
 
@@ -40,14 +43,13 @@ public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt, stri
     }
 }
 
-public sealed class CreateOneShotTaskHandler(ITaskStore store, IClock clock)
+public sealed class CreateOneShotTaskHandler(ITaskStore store, TimeProvider timeProvider)
     : ICommandHandler<CreateOneShotTaskCommand, TaskItem>
 {
     public async ValueTask<TaskItem> Handle(CreateOneShotTaskCommand command, CancellationToken cancellationToken)
     {
-        var (title, dueAt, reminderPolicy) = command.Parse();
-
-        var now = clock.UtcNow;
+        var now = timeProvider.GetUtcNow();
+        var (title, dueAt, reminderPolicy) = command.Parse(now);
         return await store.AddAsync(new TaskItem(0, title, dueAt, reminderPolicy, now, now), cancellationToken);
     }
 }
