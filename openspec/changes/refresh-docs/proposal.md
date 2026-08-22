@@ -9,6 +9,7 @@
   - Add the MCP server to "Available Now" (13 tools over streamable HTTP).
   - Link the Hermes integration guide (`docs/hermes-integration.md`), which USAGE.md already references.
   - Keep genuinely-planned items ("reminder delivery", "shopping ledger", "deployment automation") under "Coming Next".
+  - Add a captured assistant conversation under "What Nagger Does" (issue #29) showing a task end to end through the real MCP tools and two morning-report states.
 - `docs/product-brief.md`:
   - Remove the `*(planned)*` markers from recurring-task use cases and examples.
   - Move recurring tasks from "Planned next" into the shipped scope.
