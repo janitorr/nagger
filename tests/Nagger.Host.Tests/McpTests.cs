@@ -83,15 +83,17 @@ public sealed class McpTests
             "tools/call",
             new { name = "list_one_shot_tasks", arguments = new { } }
         );
-        var tasks = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
+        structuredContent.ValueKind.ShouldBe(JsonValueKind.Object);
+        var tasks = structuredContent.GetProperty("tasks");
         tasks.EnumerateArray().Select(task => task.GetProperty("id").GetInt64()).ShouldBe([activeId, pausedId]);
         tasks[0].GetProperty("status").GetString().ShouldBe("active");
         tasks[1].GetProperty("status").GetString().ShouldBe("paused");
     }
 
     [Fact]
-    public async Task Mcp_GivenNoOpenTasks_WhenListRequested_ThenReturnsEmptyArray()
+    public async Task Mcp_GivenNoOpenTasks_WhenListRequested_ThenReturnsObjectWithEmptyTasksArray()
     {
         using var factory = new NaggerFactory();
         using var client = factory.CreateClient();
@@ -104,8 +106,10 @@ public sealed class McpTests
             "tools/call",
             new { name = "list_one_shot_tasks", arguments = new { } }
         );
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        response.RootElement.GetProperty("result").GetProperty("structuredContent").GetArrayLength().ShouldBe(0);
+        structuredContent.ValueKind.ShouldBe(JsonValueKind.Object);
+        structuredContent.GetProperty("tasks").GetArrayLength().ShouldBe(0);
     }
 
     [Fact]
@@ -600,10 +604,32 @@ public sealed class McpTests
             "tools/call",
             new { name = "list_recurring_tasks", arguments = new { } }
         );
-        var templates = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
+        structuredContent.ValueKind.ShouldBe(JsonValueKind.Object);
+        var templates = structuredContent.GetProperty("tasks");
         templates.EnumerateArray().Select(x => x.GetProperty("id").GetInt64()).ShouldBe([1]);
         templates[0].GetProperty("status").GetString().ShouldBe("active");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenNoRecurringTemplates_WhenListRequested_ThenReturnsObjectWithEmptyTasksArray()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new { name = "list_recurring_tasks", arguments = new { } }
+        );
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        structuredContent.ValueKind.ShouldBe(JsonValueKind.Object);
+        structuredContent.GetProperty("tasks").GetArrayLength().ShouldBe(0);
     }
 
     [Fact]
