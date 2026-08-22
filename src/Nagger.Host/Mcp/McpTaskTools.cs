@@ -99,16 +99,18 @@ public sealed class McpTaskTools(IMediator mediator)
         Name = "list_one_shot_tasks",
         ReadOnly = true,
         UseStructuredContent = true,
-        OutputSchemaType = typeof(McpTaskResponse[])
+        OutputSchemaType = typeof(McpTaskListResponse)
     )]
     [Description(
         "Use to discover active and paused one-shot tasks. Each returned id is the identifier required by lifecycle tools."
     )]
     public Task<CallToolResult> ListOneShotTasks(CancellationToken cancellationToken) =>
         Run(async () =>
-            (await mediator.Send(new ListOpenOneShotTasksQuery(), cancellationToken))
-                .Select(McpTaskResponse.From)
-                .ToArray()
+            new McpTaskListResponse(
+                (await mediator.Send(new ListOpenOneShotTasksQuery(), cancellationToken))
+                    .Select(McpTaskResponse.From)
+                    .ToArray()
+            )
         );
 
     [McpServerTool(
@@ -217,16 +219,18 @@ public sealed class McpTaskTools(IMediator mediator)
         Name = "list_recurring_tasks",
         ReadOnly = true,
         UseStructuredContent = true,
-        OutputSchemaType = typeof(McpRecurringTemplateResponse[])
+        OutputSchemaType = typeof(McpRecurringTemplateListResponse)
     )]
     [Description(
         "Use to discover recurring task templates. Each returned id is the template id required by the pause, resume, cancel, and complete recurring lifecycle tools."
     )]
     public Task<CallToolResult> ListRecurringTasks(CancellationToken cancellationToken) =>
         Run(async () =>
-            (await mediator.Send(new ListRecurringTemplatesQuery(), cancellationToken))
-                .Select(McpRecurringTemplateResponse.From)
-                .ToArray()
+            new McpRecurringTemplateListResponse(
+                (await mediator.Send(new ListRecurringTemplatesQuery(), cancellationToken))
+                    .Select(McpRecurringTemplateResponse.From)
+                    .ToArray()
+            )
         );
 
     [McpServerTool(
@@ -279,6 +283,8 @@ public sealed class McpTaskTools(IMediator mediator)
         new() { Content = [new TextContentBlock { Text = message }], IsError = true };
 }
 
+public sealed record McpTaskListResponse(IReadOnlyList<McpTaskResponse> Tasks);
+
 public sealed record McpTaskResponse(
     long Id,
     string Title,
@@ -306,6 +312,8 @@ public sealed record McpTaskResponse(
             task.CancelledAt
         );
 }
+
+public sealed record McpRecurringTemplateListResponse(IReadOnlyList<McpRecurringTemplateResponse> Tasks);
 
 public sealed record McpRecurringTemplateResponse(
     long Id,
