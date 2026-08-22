@@ -4,7 +4,7 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Host.Api.ExceptionHandling;
 
-public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : IExceptionHandler
+public sealed class ApiExceptionHandler : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
@@ -14,9 +14,9 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
     {
         if (exception is ValidationException validation)
         {
-            httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await httpContext.Response.WriteAsJsonAsync(new ValidationError(validation.Errors), cancellationToken);
-            AppLog.ValidationRejected(logger, httpContext.Request.Path);
+            await Results
+                .ValidationProblem(validation.Errors.ToDictionary(error => error.Key, error => error.Value))
+                .ExecuteAsync(httpContext);
             return true;
         }
 
@@ -32,7 +32,6 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             return true;
         }
 
-        AppLog.UnexpectedFailure(logger, httpContext.Request.Path, exception.GetType().Name);
         await Results
             .Problem(statusCode: StatusCodes.Status500InternalServerError, title: "An unexpected error occurred.")
             .ExecuteAsync(httpContext);

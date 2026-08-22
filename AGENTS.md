@@ -24,7 +24,7 @@
 - Group HTTP endpoint mappings and their contracts under `src/Nagger.Host/Api/` by API area. Register service groups through extension methods under `src/Nagger.Host/Composition/`.
 - Centralize HTTP exception-to-response mapping with `IExceptionHandler`; endpoints must not catch domain exceptions to produce HTTP responses.
 - Keep one infrastructure adapter concern per file, and name the file after its primary type, such as `SqliteTaskStore.cs` and `ConfiguredClock.cs`.
-- Request middleware owns HTTP request/status/duration logging. Mediator behaviors, if introduced, are for Core command/query dispatch diagnostics and do not replace HTTP logging.
+- Mediator pipeline behavior owns Core command/query dispatch diagnostics (message type, elapsed time, failure type) and replaces hand-rolled HTTP request logging.
 
 ## Runtime And Contracts
 
