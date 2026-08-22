@@ -34,15 +34,26 @@ The MCP server SHALL expose `complete_one_shot_task`, `pause_one_shot_task`, `re
 - **THEN** the server returns an MCP tool error and leaves persisted task state unchanged
 
 ### Requirement: List open one-shot tasks through MCP
-The MCP server SHALL expose a read-only `list_one_shot_tasks` tool with no required arguments. The tool SHALL execute the Core open-task list query and return structured content containing the established full task representation for each active and paused one-shot task, ordered by ascending durable task ID. The tool description SHALL identify each returned `id` as the identifier used by lifecycle tools.
+The MCP server SHALL expose a read-only `list_one_shot_tasks` tool with no required arguments. The tool SHALL execute the Core open-task list query and return structured content as a JSON object whose `tasks` array contains the established full task representation for each active and paused one-shot task, ordered by ascending durable task ID. The tool description SHALL identify each returned `id` as the identifier used by lifecycle tools.
 
 #### Scenario: List open tasks through MCP
 - **WHEN** a client calls `list_one_shot_tasks` after active and paused one-shot tasks have been persisted
-- **THEN** the tool returns structured task representations for those tasks in ascending ID order without changing task state or timestamps
+- **THEN** the tool returns structured content containing a `tasks` array with those tasks in ascending ID order without changing task state or timestamps
 
 #### Scenario: List when no open tasks exist through MCP
 - **WHEN** a client calls `list_one_shot_tasks` and no active or paused one-shot tasks exist
-- **THEN** the tool returns structured content containing an empty task list
+- **THEN** the tool returns structured content containing an empty `tasks` array
+
+### Requirement: List recurring task templates through MCP
+The MCP server SHALL expose a read-only `list_recurring_tasks` tool with no required arguments. The tool SHALL execute the Core recurring-template list query and return structured content as a JSON object whose `tasks` array contains the established full template representation for each recurring task template, ordered by ascending durable template ID. The tool description SHALL identify each returned `id` as the template identifier used by the recurring lifecycle tools.
+
+#### Scenario: List recurring templates through MCP
+- **WHEN** a client calls `list_recurring_tasks` after recurring templates have been persisted
+- **THEN** the tool returns structured content containing a `tasks` array with those templates in ascending ID order without changing template state or timestamps
+
+#### Scenario: List when no recurring templates exist through MCP
+- **WHEN** a client calls `list_recurring_tasks` and no recurring templates exist
+- **THEN** the tool returns structured content containing an empty `tasks` array
 
 ### Requirement: Read morning reports through MCP
 The MCP server SHALL expose a `get_morning_report` tool accepting a `date` in `YYYY-MM-DD` format. It SHALL execute the existing Core morning-report query and return its schema version, generation timestamp, requested date, summary, and items.
