@@ -89,7 +89,7 @@ public sealed class ApiTests
         using var client = factory.CreateClient();
         await CreateTaskAsync(client, "Due today morning", "2026-08-04T08:00:00+03:00");
         await CreateTaskAsync(client, "Upcoming", "2026-08-05T09:00:00+03:00");
-        await CreateTaskAsync(client, "Overdue", "2026-08-02T09:00:00+03:00");
+        await CreateTaskAsync(client, "Overdue", "2026-08-03T09:00:00+03:00");
         await CreateTaskAsync(client, "Due today noon", "2026-08-04T12:00:00+03:00");
 
         using var report = JsonDocument.Parse(await client.GetStringAsync("/reports/morning?date=2026-08-04"));
@@ -146,6 +146,29 @@ public sealed class ApiTests
         body.RootElement.GetProperty("errors").TryGetProperty("title", out _).ShouldBeTrue();
         body.RootElement.GetProperty("errors").TryGetProperty("dueAt", out _).ShouldBeTrue();
         body.RootElement.GetProperty("errors").TryGetProperty("reminderPolicy", out _).ShouldBeTrue();
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task CreateOneShotTask_GivenPastDueAt_WhenCreateRequested_ThenReturnsValidationErrorWithoutPersistingTask()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/tasks/one-shot",
+            new
+            {
+                title = "Pay rent",
+                dueAt = "2026-08-02T09:00:00+03:00",
+                reminderPolicy = "once",
+            }
+        );
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        body.RootElement.GetProperty("errors").TryGetProperty("dueAt", out _).ShouldBeTrue();
         using var scope = factory.Services.CreateScope();
         (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.CountAsync()).ShouldBe(0);
     }

@@ -11,7 +11,7 @@ public sealed class TaskFeatureTests
     public async Task Creates_task_with_assigned_id_and_timestamps()
     {
         var store = new MemoryStore();
-        var handler = new CreateOneShotTaskHandler(store, new TestClock());
+        var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
 
         var task = await handler.Handle(new("Pay rent", "2026-08-04T09:00:00+03:00", "weekly-until-done"), default);
 
@@ -31,7 +31,7 @@ public sealed class TaskFeatureTests
     public async Task Rejects_invalid_creation_values(string? title, string? dueAt, string? policy, string field)
     {
         var store = new MemoryStore();
-        var handler = new CreateOneShotTaskHandler(store, new TestClock());
+        var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
 
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
             await handler.Handle(new(title, dueAt, policy), default)
@@ -47,7 +47,7 @@ public sealed class TaskFeatureTests
     public async Task CreateTask_GivenNonIsoDueTimestamp_WhenCreateRequested_ThenRejectsTask(string dueAt)
     {
         var store = new MemoryStore();
-        var handler = new CreateOneShotTaskHandler(store, new TestClock());
+        var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
 
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
             await handler.Handle(new("Task", dueAt, "once"), default)
@@ -63,11 +63,38 @@ public sealed class TaskFeatureTests
     public async Task CreateTask_GivenFractionalOrUtcDueTimestamp_WhenCreateRequested_ThenCreatesTask(string dueAt)
     {
         var store = new MemoryStore();
-        var handler = new CreateOneShotTaskHandler(store, new TestClock());
+        var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
 
         var task = await handler.Handle(new("Task", dueAt, "once"), default);
 
         task.DueAt.ShouldBe(DateTimeOffset.Parse(dueAt, CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task CreateTask_GivenPastDueAt_WhenCreateRequested_ThenRejectsTask()
+    {
+        var store = new MemoryStore();
+        var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
+
+        var exception = await Should.ThrowAsync<ValidationException>(async () =>
+            await handler.Handle(new("Task", "2026-08-02T09:00:00+03:00", "once"), default)
+        );
+
+        exception.Errors.Keys.ShouldContain("dueAt");
+        exception.Errors["dueAt"].ShouldBe(["Due timestamp cannot be in the past."]);
+        store.Tasks.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task CreateTask_GivenDueAtEqualToNow_WhenCreateRequested_ThenCreatesTask()
+    {
+        var store = new MemoryStore();
+        var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
+
+        var task = await handler.Handle(new("Task", "2026-08-03T09:00:00+03:00", "once"), default);
+
+        task.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero));
+        store.Tasks.ShouldHaveSingleItem();
     }
 
     [Fact]
@@ -102,7 +129,7 @@ public sealed class TaskFeatureTests
         var handler = new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock(TimeZoneInfo.Utc)
+            new TestTimeProvider(TimeZoneInfo.Utc)
         );
 
         var first = await handler.Handle(new("2026-08-04"), default);
@@ -150,7 +177,7 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock(TimeZoneInfo.Utc)
+            new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
 
         report.Summary.ShouldBe(new MorningReportSummary(0, 0, 1));
@@ -177,7 +204,7 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock(timezone)
+            new TestTimeProvider(timezone)
         ).Handle(new("2026-08-04"), default);
 
         report.Summary.DueToday.ShouldBe(1);
@@ -249,10 +276,11 @@ public sealed class TaskFeatureTests
             )
         );
 
-        var report = await new MorningReportHandler(store, instanceStore, new TestClock(TimeZoneInfo.Utc)).Handle(
-            new("2026-08-04"),
-            default
-        );
+        var report = await new MorningReportHandler(
+            store,
+            instanceStore,
+            new TestTimeProvider(TimeZoneInfo.Utc)
+        ).Handle(new("2026-08-04"), default);
 
         report.Summary.ShouldBe(new MorningReportSummary(3, 2, 2));
         report.Items.Select(x => x.Id).ShouldBe([10, 2, 11, 5, 3, 1, 4]);
@@ -283,7 +311,7 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock(TimeZoneInfo.Utc)
+            new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
 
         report.Items.ShouldHaveSingleItem().ReminderPolicy.ShouldBe("weekly-until-done");
@@ -314,10 +342,11 @@ public sealed class TaskFeatureTests
             )
         );
 
-        var report = await new MorningReportHandler(store, instanceStore, new TestClock(TimeZoneInfo.Utc)).Handle(
-            new("2026-08-04"),
-            default
-        );
+        var report = await new MorningReportHandler(
+            store,
+            instanceStore,
+            new TestTimeProvider(TimeZoneInfo.Utc)
+        ).Handle(new("2026-08-04"), default);
 
         report.Summary.ShouldBe(new MorningReportSummary(2, 0, 0));
         var recurring = report.Items.Single(x => x.Type == "recurring");
@@ -348,7 +377,7 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock(TimeZoneInfo.Utc)
+            new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
 
         report.Summary.ShouldBe(new MorningReportSummary(0, 0, 0));
@@ -407,7 +436,7 @@ public sealed class TaskFeatureTests
         var handler = new MorningReportHandler(
             new MemoryStore(),
             new MemoryRecurringTaskInstanceStore(),
-            new TestClock()
+            new TestTimeProvider()
         );
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
             await handler.Handle(new(date), default)
@@ -457,7 +486,7 @@ public sealed class TaskFeatureTests
     [Fact]
     public async Task Complete_GivenMissingTask_WhenCompleteRequested_ThenThrowsNotFound()
     {
-        var handler = new CompleteOneShotTaskHandler(new MemoryStore(), new TestClock());
+        var handler = new CompleteOneShotTaskHandler(new MemoryStore(), new TestTimeProvider());
 
         await Should.ThrowAsync<TaskNotFoundException>(async () => await handler.Handle(new(42), default));
     }
@@ -487,20 +516,21 @@ public sealed class TaskFeatureTests
         target switch
         {
             OneShotTaskStatus.Done => () =>
-                new CompleteOneShotTaskHandler(store, new TestClock()).Handle(new(1), default),
+                new CompleteOneShotTaskHandler(store, new TestTimeProvider()).Handle(new(1), default),
             OneShotTaskStatus.Paused => () =>
-                new PauseOneShotTaskHandler(store, new TestClock()).Handle(new(1), default),
+                new PauseOneShotTaskHandler(store, new TestTimeProvider()).Handle(new(1), default),
             OneShotTaskStatus.Active => () =>
-                new ResumeOneShotTaskHandler(store, new TestClock()).Handle(new(1), default),
+                new ResumeOneShotTaskHandler(store, new TestTimeProvider()).Handle(new(1), default),
             OneShotTaskStatus.Cancelled => () =>
-                new CancelOneShotTaskHandler(store, new TestClock()).Handle(new(1), default),
+                new CancelOneShotTaskHandler(store, new TestTimeProvider()).Handle(new(1), default),
             _ => throw new ArgumentOutOfRangeException(nameof(target)),
         };
 
-    private sealed class TestClock(TimeZoneInfo? timezone = null) : IClock
+    private sealed class TestTimeProvider(TimeZoneInfo? timezone = null) : TimeProvider
     {
-        public DateTimeOffset UtcNow => new(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
-        public TimeZoneInfo TimeZone => timezone ?? TimeZoneInfo.Utc;
+        public override DateTimeOffset GetUtcNow() => new(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
+
+        public override TimeZoneInfo LocalTimeZone => timezone ?? TimeZoneInfo.Utc;
     }
 
     private sealed class MemoryStore(params TaskItem[] tasks) : ITaskStore

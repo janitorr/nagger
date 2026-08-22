@@ -63,7 +63,7 @@ Required fields:
 | Field | Type | Rules |
 | --- | --- | --- |
 | `title` | string | Nonempty; surrounding whitespace is trimmed. |
-| `dueAt` | string | ISO-8601 date-time with an explicit offset or `Z`. |
+| `dueAt` | string | ISO-8601 date-time with an explicit offset or `Z`, not in the past. |
 | `reminderPolicy` | string | One of `none`, `once`, or `weekly-until-done`. |
 
 Successful response: `201 Created`

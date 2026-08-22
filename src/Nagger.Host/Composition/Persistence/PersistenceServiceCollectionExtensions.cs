@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Nagger.Core.Tasks;
 using Nagger.Host.Infrastructure;
 
@@ -15,7 +16,8 @@ public static class PersistenceServiceCollectionExtensions
             options.UseSqlite($"Data Source={configuration["Nagger:DatabasePath"] ?? "nagger.db"}")
         );
         services.AddScoped<ITaskStore, SqliteTaskStore>();
-        services.AddSingleton<IClock, ConfiguredClock>();
+        services.RemoveAll<TimeProvider>();
+        services.AddSingleton<TimeProvider, ConfiguredTimeProvider>();
         services.AddScoped<IRecurringTaskTemplateStore, SqliteRecurringTaskTemplateStore>();
         services.AddScoped<IRecurringTaskInstanceStore, SqliteRecurringTaskInstanceStore>();
         return services;
