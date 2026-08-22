@@ -83,6 +83,26 @@ public sealed class ApiTests
     }
 
     [Fact]
+    public async Task MorningReport_GivenMixedDueStates_WhenRequested_ThenOrdersItemsChronologically()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await CreateTaskAsync(client, "Due today morning", "2026-08-04T08:00:00+03:00");
+        await CreateTaskAsync(client, "Upcoming", "2026-08-05T09:00:00+03:00");
+        await CreateTaskAsync(client, "Overdue", "2026-08-02T09:00:00+03:00");
+        await CreateTaskAsync(client, "Due today noon", "2026-08-04T12:00:00+03:00");
+
+        using var report = JsonDocument.Parse(await client.GetStringAsync("/reports/morning?date=2026-08-04"));
+
+        var items = report.RootElement.GetProperty("items");
+        items.EnumerateArray().Select(item => item.GetProperty("id").GetInt64()).ShouldBe([3, 1, 4, 2]);
+        items
+            .EnumerateArray()
+            .Select(item => item.GetProperty("dueState").GetString())
+            .ShouldBe(["overdue", "due_today", "due_today", "upcoming"]);
+    }
+
+    [Fact]
     public async Task MorningReport_GivenTaskDueToday_WhenRequested_ThenReturnsTaskDetails()
     {
         using var factory = new NaggerFactory();
