@@ -1,5 +1,7 @@
 ---
 description: "Implement tasks from an OpenSpec change (Experimental)"
+agent: build
+model: opencode-go/deepseek-v4-flash
 ---
 
 Implement tasks from an OpenSpec change.

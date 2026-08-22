@@ -1,5 +1,7 @@
 ---
 description: "Sync delta specs from a change to main specs"
+agent: build
+model: opencode-go/deepseek-v4-flash
 ---
 
 Sync delta specs from a change to main specs.
