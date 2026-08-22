@@ -4,7 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
-    <AnalysisLevel>8.0</AnalysisLevel>
+    <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mediator.Abstractions" Version="3.0.2" />
