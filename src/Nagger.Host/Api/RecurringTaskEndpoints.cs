@@ -1,3 +1,4 @@
+using System.Globalization;
 using Mediator;
 using Nagger.Core.Tasks;
 using Nagger.Core.Tasks.Domain;
@@ -87,7 +88,7 @@ public sealed record RecurringTemplateResponse(
         new(
             template.Id,
             template.Title,
-            template.StartDate.ToString("yyyy-MM-dd"),
+            template.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             new RecurrenceRuleResponse(template.Recurrence.Every, template.Recurrence.Unit.ToContractValue()),
             template.ReminderPolicy.ToContractValue(),
             template.Status.ToContractValue(),

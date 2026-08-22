@@ -34,12 +34,18 @@ app.Use(
     {
         var timer = Stopwatch.StartNew();
         await next(context);
-        AppLog.RequestCompleted(
-            app.Logger,
-            context.Request.Path,
-            context.Response.StatusCode,
-            timer.ElapsedMilliseconds
-        );
+        if (app.Logger.IsEnabled(LogLevel.Information))
+        {
+            // CA1873 false positive: guard around source-generated logger call (dotnet/roslyn-analyzers#7690).
+#pragma warning disable CA1873
+            AppLog.RequestCompleted(
+                app.Logger,
+                context.Request.Path,
+                context.Response.StatusCode,
+                timer.ElapsedMilliseconds
+            );
+#pragma warning restore CA1873
+        }
     }
 );
 

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Text.Json;
 using Mediator;
 using ModelContextProtocol.Protocol;
@@ -331,7 +332,7 @@ public sealed record McpRecurringTemplateResponse(
         new(
             template.Id,
             template.Title,
-            template.StartDate.ToString("yyyy-MM-dd"),
+            template.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             new McpRecurrenceRuleResponse(template.Recurrence.Every, template.Recurrence.Unit.ToContractValue()),
             template.ReminderPolicy.ToContractValue(),
             template.Status.ToContractValue(),
@@ -385,7 +386,7 @@ public sealed record McpMorningReportResponse(
         new(
             report.SchemaVersion,
             report.GeneratedAt,
-            report.Date.ToString("yyyy-MM-dd"),
+            report.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             new McpMorningReportSummaryResponse(
                 report.Summary.DueToday,
                 report.Summary.Overdue,

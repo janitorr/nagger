@@ -17,11 +17,11 @@ public interface ITaskStore
 
 public interface IRecurringTaskTemplateStore
 {
-    ValueTask<RecurringTaskTemplate> AddAsync(RecurringTaskTemplate template, CancellationToken cancellationToken);
+    ValueTask<RecurringTaskTemplate> AddAsync(RecurringTaskTemplate recurringTemplate, CancellationToken cancellationToken);
 
     ValueTask<RecurringTaskTemplate?> GetByIdAsync(long id, CancellationToken cancellationToken);
 
-    ValueTask UpdateAsync(RecurringTaskTemplate template, CancellationToken cancellationToken);
+    ValueTask UpdateAsync(RecurringTaskTemplate recurringTemplate, CancellationToken cancellationToken);
 
     ValueTask<IReadOnlyList<RecurringTaskTemplate>> GetAllAsync(CancellationToken cancellationToken);
 }

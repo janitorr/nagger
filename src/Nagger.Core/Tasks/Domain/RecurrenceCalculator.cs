@@ -9,7 +9,7 @@ public static class RecurrenceCalculator
             RecurrenceUnit.Days => completionDate.AddDays(rule.Every),
             RecurrenceUnit.Weeks => completionDate.AddDays(rule.Every * 7),
             RecurrenceUnit.Months => AddMonthsWithEdgeCaseHandling(completionDate, rule.Every),
-            _ => throw new ArgumentOutOfRangeException(nameof(rule.Unit)),
+            _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
     }
 
