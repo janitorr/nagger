@@ -30,4 +30,11 @@ public static partial class AppLog
         Message = "Dispatch {MessageType} failed ({ErrorType}) in {ElapsedMs}ms"
     )]
     public static partial void DispatchFailed(ILogger logger, string messageType, string errorType, long elapsedMs);
+
+    [LoggerMessage(
+        EventId = 1007,
+        Level = LogLevel.Debug,
+        Message = "Dispatch {MessageType} not found ({ErrorType}) in {ElapsedMs}ms"
+    )]
+    public static partial void DispatchNotFound(ILogger logger, string messageType, string errorType, long elapsedMs);
 }

@@ -27,9 +27,9 @@ Add a `DispatchLoggingBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage
 
 ### Decision: Classify failures by exception type, log then rethrow
 
-The behavior catches exceptions, logs `ValidationException` at Warning and everything else at Error, and always rethrows. The transport adapters (`ApiExceptionHandler`, MCP `Run` helper) keep their exception-to-response shaping.
+The behavior catches exceptions, logs `ValidationException` at Warning, `TaskNotFoundException`/`RecurringTaskNotFoundException` at Debug, and everything else at Error, and always rethrows. The transport adapters (`ApiExceptionHandler`, MCP `Run` helper) keep their exception-to-response shaping.
 
-- **Why:** The current failure signals live in `ApiExceptionHandler` (HTTP-only), so MCP failures are silently unlogged. Moving classification into the behavior gives both surfaces failure logging while keeping response shaping where it belongs. This mirrors the library's documented "error logging" pipeline example.
+- **Why:** The current failure signals live in `ApiExceptionHandler` (HTTP-only), so MCP failures are silently unlogged. Moving classification into the behavior gives both surfaces failure logging while keeping response shaping where it belongs. This mirrors the library's documented "error logging" pipeline example. Not-found is a third category: a normal, recoverable client outcome mapped to 404, so it logs at Debug rather than Error to avoid noise and keep genuine failures distinguishable.
 - **Alternative considered:** Log only success+timing, keep `ValidationRejected`/`UnexpectedFailure` in the handler. Rejected: that leaves MCP failures unlogged and splits the concern across two files.
 
 ### Decision: Behavior lives in Host, logs via `AppLog` source-generated messages
