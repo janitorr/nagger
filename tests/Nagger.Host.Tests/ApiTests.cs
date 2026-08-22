@@ -96,9 +96,10 @@ public sealed class ApiTests
 
         var items = report.RootElement.GetProperty("items");
         items.EnumerateArray().Select(item => item.GetProperty("id").GetInt64()).ShouldBe([3, 1, 4, 2]);
-        items.EnumerateArray().Select(item => item.GetProperty("dueState").GetString()).ShouldBe(
-            ["overdue", "due_today", "due_today", "upcoming"]
-        );
+        items
+            .EnumerateArray()
+            .Select(item => item.GetProperty("dueState").GetString())
+            .ShouldBe(["overdue", "due_today", "due_today", "upcoming"]);
     }
 
     [Fact]

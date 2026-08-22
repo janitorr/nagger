@@ -249,16 +249,19 @@ public sealed class TaskFeatureTests
             )
         );
 
-        var report = await new MorningReportHandler(
-            store,
-            instanceStore,
-            new TestClock(TimeZoneInfo.Utc)
-        ).Handle(new("2026-08-04"), default);
+        var report = await new MorningReportHandler(store, instanceStore, new TestClock(TimeZoneInfo.Utc)).Handle(
+            new("2026-08-04"),
+            default
+        );
 
         report.Summary.ShouldBe(new MorningReportSummary(3, 2, 2));
         report.Items.Select(x => x.Id).ShouldBe([10, 2, 11, 5, 3, 1, 4]);
-        report.Items.Select(x => x.Type).ShouldBe(["recurring", "one-shot", "recurring", "one-shot", "one-shot", "one-shot", "one-shot"]);
-        report.Items.Select(x => x.DueState).ShouldBe(["overdue", "overdue", "due_today", "due_today", "due_today", "upcoming", "upcoming"]);
+        report
+            .Items.Select(x => x.Type)
+            .ShouldBe(["recurring", "one-shot", "recurring", "one-shot", "one-shot", "one-shot", "one-shot"]);
+        report
+            .Items.Select(x => x.DueState)
+            .ShouldBe(["overdue", "overdue", "due_today", "due_today", "due_today", "upcoming", "upcoming"]);
         report.Items.Select(x => x.DaysOverdue).ShouldBe([3, 2, null, null, null, null, null]);
         report.Items.Select(x => x.DaysUntilDue).ShouldBe([null, null, null, null, null, 1, 2]);
     }
