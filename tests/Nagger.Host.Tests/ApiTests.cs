@@ -391,28 +391,6 @@ public sealed class ApiTests
     }
 
     [Fact]
-    public void RequestCompleted_GivenTaskRequest_WhenLogged_ThenDoesNotIncludeTaskContent()
-    {
-        var logger = new CapturingLogger();
-
-        AppLog.RequestCompleted(logger, "/tasks/one-shot", 201, 10);
-
-        logger.EventIds.ShouldBe([1000]);
-        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
-    }
-
-    [Fact]
-    public void ValidationRejected_GivenTaskRequest_WhenLogged_ThenDoesNotIncludeTaskContent()
-    {
-        var logger = new CapturingLogger();
-
-        AppLog.ValidationRejected(logger, "/tasks/one-shot");
-
-        logger.EventIds.ShouldBe([1001]);
-        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
-    }
-
-    [Fact]
     public void TaskCreated_GivenTaskIdentifier_WhenLogged_ThenDoesNotIncludeTaskContent()
     {
         var logger = new CapturingLogger();
@@ -424,13 +402,35 @@ public sealed class ApiTests
     }
 
     [Fact]
-    public void UnexpectedFailure_GivenTaskRequest_WhenLogged_ThenDoesNotIncludeTaskContent()
+    public void DispatchSucceeded_GivenTaskDispatch_WhenLogged_ThenDoesNotIncludeTaskContent()
     {
         var logger = new CapturingLogger();
 
-        AppLog.UnexpectedFailure(logger, "/tasks/one-shot", "InvalidOperationException");
+        AppLog.DispatchSucceeded(logger, "CreateOneShotTaskCommand", 10);
 
-        logger.EventIds.ShouldBe([1003]);
+        logger.EventIds.ShouldBe([1004]);
+        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
+    }
+
+    [Fact]
+    public void DispatchValidationFailed_GivenTaskDispatch_WhenLogged_ThenDoesNotIncludeTaskContent()
+    {
+        var logger = new CapturingLogger();
+
+        AppLog.DispatchValidationFailed(logger, "CreateOneShotTaskCommand", "ValidationException", 10);
+
+        logger.EventIds.ShouldBe([1005]);
+        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
+    }
+
+    [Fact]
+    public void DispatchFailed_GivenTaskDispatch_WhenLogged_ThenDoesNotIncludeTaskContent()
+    {
+        var logger = new CapturingLogger();
+
+        AppLog.DispatchFailed(logger, "CreateOneShotTaskCommand", "InvalidOperationException", 10);
+
+        logger.EventIds.ShouldBe([1006]);
         string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
     }
 
