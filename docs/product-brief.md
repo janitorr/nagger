@@ -1,7 +1,7 @@
 ---
 title: Nagger Product Brief
 created: 2026-08-02
-updated: 2026-08-04
+updated: 2026-08-22
 tags:
   - type/product-brief
   - project/hermes
@@ -16,7 +16,7 @@ status: draft
 
 Create a deterministic local service that manages personal reminders and exposes them through REST and MCP for an assistant to use.
 
-The current release proves the one-shot task lifecycle and deterministic morning report. Recurrence, reminder delivery, and a shopping ledger remain planned product capabilities rather than implied shipping behavior.
+The current release ships the one-shot task lifecycle, recurring task templates with their instances, and the deterministic morning report. Reminder delivery and a shopping ledger remain planned product capabilities rather than implied shipping behavior.
 
 The service exists so the morning update can report useful things without an LLM guessing from free-form notes.
 
@@ -36,7 +36,7 @@ Important personal obligations can disappear into notes, memory, or an incomplet
 | Use case                          | Problem solved                                                     | Successful outcome                                                                                                                          |
 | --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Capture a one-shot task           | A specific obligation may be forgotten.                            | The assistant creates a task from the person’s explicit request, with a due date and reminder policy.                                       |
-| Capture a recurring task *(planned)* | Repeated maintenance work is easy to lose track of.             | The assistant creates an interval task, such as every two or six months; completion schedules the next occurrence from the completion date. |
+| Capture a recurring task | Repeated maintenance work is easy to lose track of.             | The assistant creates a recurring template; its instances are scheduled on a configured cadence.                                  |
 | Generate the morning digest       | The person should not reconstruct priorities from scattered notes. | The AI assistant reads the deterministic report and creates a concise Morning Digest for the person, covering overdue, due-today, and next-seven-day tasks. |
 | Receive follow-up reminders *(planned)* | A due item can remain unfinished after its first reminder.    | `weekly-until-done` tasks are eligible for weekly follow-up until completed or cancelled.                                                   |
 | Complete, pause, or cancel a task | The system must reflect reality without deleting history.          | The assistant submits an explicit validated command; terminal task records remain intact.                                                   |
@@ -58,10 +58,10 @@ Important personal obligations can disappear into notes, memory, or an incomplet
 - Created/updated/completed timestamp tracking.
 - Morning Digest report endpoint.
 - REST and MCP task operations.
+- Recurring task templates and their instances.
 
 ### Planned next
 
-- Recurring tasks.
 - Actual reminder delivery and weekly escalation until done.
 - Deployment automation.
 
@@ -90,7 +90,7 @@ Tasks represent things that need doing.
 Task kinds:
 
 - `one-shot` — has a specific due date/time. Available now.
-- `recurring` — repeats by a configured cadence. Planned.
+- `recurring` — a template that generates instances on a configured cadence. Available now.
 
 Task identity:
 
@@ -152,7 +152,9 @@ reporting:
   reportWhen: due-or-overdue
 ```
 
-### Recurring task example *(planned)*
+### Recurring task example
+
+A recurring template generates instances on a cadence. Creating the template immediately creates its first instance, due on the template's `startDate`:
 
 ```yaml
 kind: task
@@ -162,17 +164,14 @@ type: recurring
 status: active
 createdAt: 2026-08-02T09:20:00+03:00
 updatedAt: 2026-08-02T09:20:00+03:00
-lastCompletedAt: null
 cancelledAt: null
+startDate: 2026-08-02
 
 schedule:
   recurrence:
     every: 1
     unit: months
-  nextDueAt: 2026-09-02T09:00:00+03:00
   reminderPolicy: weekly-until-done
-  nextReminderAt: 2026-09-02T09:00:00+03:00
-  lastRemindedAt: null
 
 reporting:
   includeInMorningUpdate: true
@@ -215,7 +214,7 @@ For each active one-shot task, compare the calendar date of its `dueAt` timestam
 
 The report includes all active overdue and due-today tasks. It includes upcoming tasks only when their local due date is within the next seven calendar days, with `daysUntilDue` from 1 through 7; later tasks are excluded from both items and the upcoming summary count. Overdue items provide positive `daysOverdue` and null `daysUntilDue`; due-today items set both fields to null.
 
-A future recurring task will apply the same rule to `nextDueAt`.
+Recurring instances apply the same rule to their `dueAt`. They appear in reports under their template id, distinguished from one-shot tasks by a `type` field.
 
 Time of day may order items within a report, but it does not change a task from `due_today` to `overdue`.
 
@@ -225,9 +224,9 @@ Time of day may order items within a report, but it does not change a task from 
 - Stored timestamps use ISO-8601 date-time values with an explicit UTC offset.
 - The service timezone gives the report date an unambiguous meaning through midnight and daylight-saving transitions.
 
-### Recurrence *(planned)*
+### Recurrence
 
-Recurring tasks will use an interval:
+Recurring tasks are templates that repeatedly generate instances on an interval:
 
 ```yaml
 recurrence:
@@ -237,7 +236,8 @@ recurrence:
 
 - `every` is a positive integer.
 - Supported `unit` values are `days`, `weeks`, and `months`.
-- Completing a recurring task keeps its status `active`, sets `lastCompletedAt`, and calculates `nextDueAt` from the completion timestamp.
+- Creating a template immediately creates its first instance, due on the template's `startDate`.
+- Completing the template's current active instance schedules the next instance from the completion timestamp; the template stays `active`.
 - For month-based recurrence, if the target day does not exist in the target month, use that month’s last day.
 - Complex calendar rules, holiday exclusions, and natural-language recurrence remain out of scope for the first version.
 
@@ -259,7 +259,7 @@ Task status changes use strict transitions:
 | Current status | Allowed command | Result |
 |---|---|---|
 | `active` | `pause` | `paused` |
-| `active` | `complete` | `done` for one-shot; next occurrence for recurring |
+| `active` | `complete` | `done` for one-shot; recurring instance completes and schedules the next |
 | `active` | `cancel` | `cancelled` |
 | `paused` | `resume` | `active` |
 | `paused` | `cancel` | `cancelled` |
@@ -278,16 +278,14 @@ When a one-shot task is completed:
 - Set `updatedAt` to current timestamp.
 - Exclude from future reminder reports.
 
-### Recurring completion *(planned)*
+### Recurring completion
 
-When a recurring task is completed:
+When the current active instance of a recurring template is completed:
 
-- Keep `status: active`.
-- Set `lastCompletedAt` to current timestamp.
-- Set `updatedAt` to current timestamp.
-- Calculate `nextDueAt` from the completion timestamp and its recurrence interval.
-- Reset `nextReminderAt` to the new `nextDueAt`.
-- Clear `lastRemindedAt`.
+- Keep the template `status: active`.
+- Set the completed instance `status: done` and `completedAt` to the current timestamp.
+- Set the template `updatedAt` to the current timestamp.
+- Create the next instance, due from the completion timestamp and the template's recurrence interval.
 
 ## Future shopping behavior
 
@@ -325,11 +323,11 @@ One-shot creation requires `title`, `dueAt`, and an explicit `reminderPolicy`; n
 
 ### MCP
 
-MCP-compatible clients connect through streamable HTTP at `/mcp`. The server exposes tools for creating, completing, pausing, resuming, and cancelling one-shot tasks, plus `get_morning_report`. Tool results use the same observable task and report fields as REST.
+MCP-compatible clients connect through streamable HTTP at `/mcp`. The server exposes tools for creating, completing, pausing, resuming, and cancelling one-shot and recurring tasks, plus listing and `get_morning_report`. Tool results use the same observable task and report fields as REST.
 
 ### Planned interfaces
 
-Recurring creation, task editing/listing, reminder-emission recording, and shopping endpoints remain planned. They are not part of the current public contract.
+Task editing/listing, reminder-emission recording, and shopping endpoints remain planned. They are not part of the current public contract.
 
 ## Morning Digest JSON shape
 
@@ -384,6 +382,7 @@ Not allowed by default:
 ## Current acceptance criteria
 
 - A user can create one-shot tasks with an explicit due timestamp and reminder policy through REST or MCP.
+- A user can create recurring templates and complete their instances through REST or MCP; completing an instance schedules the next one deterministically.
 - The service returns deterministic due-state JSON for Morning Digest through REST or MCP.
 - Allowed lifecycle changes update `updatedAt` and relevant completion/cancellation timestamps.
 - Report reads are pure and do not alter task state or delivery state.
@@ -392,7 +391,6 @@ Not allowed by default:
 
 ## Planned acceptance criteria
 
-- Recurring tasks calculate their next occurrence deterministically on completion.
 - Reminder delivery records `lastRemindedAt` and `nextReminderAt` deterministically.
 
 ## Open questions
