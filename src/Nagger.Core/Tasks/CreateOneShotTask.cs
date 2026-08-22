@@ -4,8 +4,7 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Core.Tasks;
 
-public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt, string? ReminderPolicy)
-    : ICommand<TaskItem>
+public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt, string? ReminderPolicy) : ICommand<TaskItem>
 {
     public (string Title, DateTimeOffset DueAt, ReminderPolicy ReminderPolicy) Parse()
     {
@@ -49,9 +48,6 @@ public sealed class CreateOneShotTaskHandler(ITaskStore store, IClock clock)
         var (title, dueAt, reminderPolicy) = command.Parse();
 
         var now = clock.UtcNow;
-        return await store.AddAsync(
-            new TaskItem(0, title, dueAt, reminderPolicy, now, now),
-            cancellationToken
-        );
+        return await store.AddAsync(new TaskItem(0, title, dueAt, reminderPolicy, now, now), cancellationToken);
     }
 }
