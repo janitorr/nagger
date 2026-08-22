@@ -84,6 +84,21 @@ public static class RecurrenceUnits
             RecurrenceUnit.Months => "months",
             _ => throw new ArgumentOutOfRangeException(nameof(unit)),
         };
+
+    public static bool TryParse(string? value, out RecurrenceUnit unit) =>
+        value switch
+        {
+            "days" => Set(RecurrenceUnit.Days, out unit),
+            "weeks" => Set(RecurrenceUnit.Weeks, out unit),
+            "months" => Set(RecurrenceUnit.Months, out unit),
+            _ => Set(default, out unit, false),
+        };
+
+    private static bool Set(RecurrenceUnit value, out RecurrenceUnit unit, bool success = true)
+    {
+        unit = value;
+        return success;
+    }
 }
 
 public enum RecurringTaskStatus

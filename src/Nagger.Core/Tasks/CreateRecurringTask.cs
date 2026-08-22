@@ -9,7 +9,50 @@ public sealed record CreateRecurringTaskCommand(
     string? StartDate,
     RecurrenceRuleInput? Recurrence,
     string? ReminderPolicy
-) : ICommand<RecurringTaskTemplate>;
+) : ICommand<RecurringTaskTemplate>
+{
+    public (string Title, DateOnly StartDate, RecurrenceRule Recurrence, ReminderPolicy ReminderPolicy) Parse(
+        DateOnly today
+    )
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (string.IsNullOrWhiteSpace(Title))
+            errors["title"] = ["Title is required."];
+
+        var startDate = default(DateOnly);
+        if (
+            StartDate is null
+            || !DateOnly.TryParseExact(
+                StartDate,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out startDate
+            )
+        )
+            errors["startDate"] = ["Start date must be in YYYY-MM-DD format."];
+
+        var every = Recurrence?.Every;
+        if (every is null || every <= 0)
+            errors["recurrence.every"] = ["Recurrence every must be a positive integer."];
+
+        var unit = default(RecurrenceUnit);
+        if (!RecurrenceUnits.TryParse(Recurrence?.Unit, out unit))
+            errors["recurrence.unit"] = ["Recurrence unit must be days, weeks, or months."];
+
+        var reminderPolicy = default(ReminderPolicy);
+        if (!ReminderPolicies.TryParse(ReminderPolicy, out reminderPolicy))
+            errors["reminderPolicy"] = ["Reminder policy must be none, once, or weekly-until-done."];
+
+        if (startDate != default && startDate < today)
+            errors["startDate"] = ["Start date cannot be in the past."];
+
+        if (errors.Count > 0)
+            throw new ValidationException(errors);
+
+        return (Title!.Trim(), startDate, new RecurrenceRule(every!.Value, unit), reminderPolicy);
+    }
+}
 
 public sealed record RecurrenceRuleInput(int? Every, string? Unit);
 
@@ -24,48 +67,15 @@ public sealed class CreateRecurringTaskHandler(
         CancellationToken cancellationToken
     )
     {
-        var errors = new Dictionary<string, string[]>();
-        if (string.IsNullOrWhiteSpace(command.Title))
-            errors["title"] = ["Title is required."];
-
-        var startDate = default(DateOnly);
-        if (
-            command.StartDate is null
-            || !DateOnly.TryParseExact(
-                command.StartDate,
-                "yyyy-MM-dd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out startDate
-            )
-        )
-            errors["startDate"] = ["Start date must be in YYYY-MM-DD format."];
-
-        var every = command.Recurrence?.Every;
-        if (every is null || every <= 0)
-            errors["recurrence.every"] = ["Recurrence every must be a positive integer."];
-
-        var unit = default(RecurrenceUnit);
-        if (!TryParseUnit(command.Recurrence?.Unit, out unit))
-            errors["recurrence.unit"] = ["Recurrence unit must be days, weeks, or months."];
-
-        var reminderPolicy = default(ReminderPolicy);
-        if (!ReminderPolicies.TryParse(command.ReminderPolicy, out reminderPolicy))
-            errors["reminderPolicy"] = ["Reminder policy must be none, once, or weekly-until-done."];
-
-        if (startDate != default && startDate < Today())
-            errors["startDate"] = ["Start date cannot be in the past."];
-
-        if (errors.Count > 0)
-            throw new ValidationException(errors);
+        var (title, startDate, recurrence, reminderPolicy) = command.Parse(Today());
 
         var now = clock.UtcNow;
         var createdTemplate = await templateStore.AddAsync(
             new RecurringTaskTemplate(
                 Id: 0,
-                Title: command.Title!.Trim(),
+                Title: title,
                 StartDate: startDate,
-                Recurrence: new RecurrenceRule(every!.Value, unit),
+                Recurrence: recurrence,
                 ReminderPolicy: reminderPolicy,
                 Status: RecurringTaskStatus.Active,
                 CreatedAt: now,
@@ -92,19 +102,4 @@ public sealed class CreateRecurringTaskHandler(
 
     private DateOnly Today() =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(clock.UtcNow.UtcDateTime, clock.TimeZone));
-
-    private static bool TryParseUnit(string? value, out RecurrenceUnit unit) =>
-        value switch
-        {
-            "days" => Set(RecurrenceUnit.Days, out unit),
-            "weeks" => Set(RecurrenceUnit.Weeks, out unit),
-            "months" => Set(RecurrenceUnit.Months, out unit),
-            _ => Set(default, out unit, false),
-        };
-
-    private static bool Set(RecurrenceUnit value, out RecurrenceUnit unit, bool success = true)
-    {
-        unit = value;
-        return success;
-    }
 }
