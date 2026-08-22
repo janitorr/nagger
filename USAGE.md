@@ -216,16 +216,6 @@ Response: `200 OK`
   },
   "items": [
     {
-      "id": 1,
-      "title": "Pay rent",
-      "dueAt": "2026-08-04T09:00:00+03:00",
-      "type": "one-shot",
-      "dueState": "due_today",
-      "daysOverdue": null,
-      "daysUntilDue": null,
-      "reminderPolicy": "once"
-    },
-    {
       "id": 2,
       "title": "Submit expense report",
       "dueAt": "2026-08-02T09:00:00+03:00",
@@ -234,6 +224,16 @@ Response: `200 OK`
       "daysOverdue": 2,
       "daysUntilDue": null,
       "reminderPolicy": "none"
+    },
+    {
+      "id": 1,
+      "title": "Pay rent",
+      "dueAt": "2026-08-04T09:00:00+03:00",
+      "type": "one-shot",
+      "dueState": "due_today",
+      "daysOverdue": null,
+      "daysUntilDue": null,
+      "reminderPolicy": "once"
     },
     {
       "id": 3,
@@ -248,6 +248,13 @@ Response: `200 OK`
   ]
 }
 ```
+
+The `items` array is ordered chronologically by due timestamp (ascending), so
+overdue reminders come first (most overdue first), then due-today reminders,
+then upcoming reminders, each earliest due first. Within a single due date,
+items are ordered by due time. Items with an identical due timestamp have no
+specified relative order. Ordering never changes the `summary` counts or any
+reminder state.
 
 The configured `Nagger:TimeZone` (default `Europe/Helsinki`) determines each
 reminder's local due date. The report classifies active reminders as:

@@ -81,6 +81,8 @@ public sealed class MorningReportHandler(ITaskStore store, IRecurringTaskInstanc
                 "recurring"
             );
 
+        items = items.OrderBy(x => x.DueAt).ToList();
+
         return new MorningReport(
             "3",
             clock.UtcNow,
