@@ -16,6 +16,38 @@ Enter explore mode. Think deeply. Visualize freely. Follow the conversation wher
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
+## Start from a Fresh Main
+
+Before grounding any exploration in the code, get onto `main` at the latest
+`origin/main` so you're not reasoning about a stale codebase. Local uncommitted
+changes are fine — leave them untouched.
+
+1. Locate the default branch and current state:
+   ```bash
+   git symbolic-ref --short refs/remotes/origin/HEAD
+   git branch --show-current
+   git status --porcelain
+   ```
+2. Fetch the latest from origin:
+   ```bash
+   git fetch origin
+   ```
+3. If you're not on the default branch, ask the user before switching (they may
+   be mid-change); switch only with their go-ahead:
+   ```bash
+   git checkout <default-branch>
+   ```
+4. Fast-forward main to origin without rewriting history:
+   ```bash
+   git pull --ff-only
+   ```
+5. If the fast-forward fails (main diverged, or an uncommitted change blocks it),
+   stop and tell the user. Never merge, rebase, stash, or discard their work to
+   force it.
+
+Only once main is current should you read files, search code, or draw
+conclusions about the codebase.
+
 **Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `schemas`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
 ---
