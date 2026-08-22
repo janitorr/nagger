@@ -385,7 +385,10 @@ public sealed class RecurringTaskFeatureTests
     [InlineData("days", RecurrenceUnit.Days)]
     [InlineData("weeks", RecurrenceUnit.Weeks)]
     [InlineData("months", RecurrenceUnit.Months)]
-    public void RecurrenceUnits_GivenValidContractValue_WhenParsed_ThenReturnsUnit(string value, RecurrenceUnit expected)
+    public void RecurrenceUnits_GivenValidContractValue_WhenParsed_ThenReturnsUnit(
+        string value,
+        RecurrenceUnit expected
+    )
     {
         RecurrenceUnits.TryParse(value, out var unit).ShouldBeTrue();
         unit.ShouldBe(expected);
