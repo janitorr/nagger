@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nagger.Host;
@@ -28,26 +27,6 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Database.MigrateAsync();
 
 app.UseExceptionHandler();
-
-app.Use(
-    async (context, next) =>
-    {
-        var timer = Stopwatch.StartNew();
-        await next(context);
-        if (app.Logger.IsEnabled(LogLevel.Information))
-        {
-            // CA1873 false positive: guard around source-generated logger call (dotnet/roslyn-analyzers#7690).
-#pragma warning disable CA1873
-            AppLog.RequestCompleted(
-                app.Logger,
-                context.Request.Path,
-                context.Response.StatusCode,
-                timer.ElapsedMilliseconds
-            );
-#pragma warning restore CA1873
-        }
-    }
-);
 
 app.MapTaskEndpoints();
 app.MapRecurringTaskEndpoints();
