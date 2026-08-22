@@ -20,11 +20,7 @@ public sealed class NaggerFactory : WebApplicationFactory<Program>
     {
         builder.ConfigureAppConfiguration(configuration =>
             configuration.AddInMemoryCollection(
-                new Dictionary<string, string?>
-                {
-                    ["Nagger:DatabasePath"] = _databasePath,
-                    ["Nagger:TimeZone"] = "Europe/Helsinki",
-                }
+                new Dictionary<string, string?> { ["Nagger:DatabasePath"] = _databasePath }
             )
         );
         builder.ConfigureServices(services =>
