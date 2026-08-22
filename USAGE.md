@@ -40,6 +40,10 @@ network.
 All request and response bodies are JSON. Timestamps use ISO-8601 with an
 explicit UTC offset, for example `2026-08-04T09:00:00+03:00`.
 
+For running Nagger as a persistent MCP server for Hermes (build, systemd user
+unit, SQLite location, Hermes `mcp_servers` wiring), see
+[`hermes-integration.md`](docs/hermes-integration.md).
+
 ## Create A Reminder
 
 `POST /tasks/one-shot`

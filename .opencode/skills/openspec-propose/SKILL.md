@@ -53,7 +53,25 @@ When the user is ready to implement, they must start the apply workflow explicit
 
    Otherwise, omit `--schema` to preserve the configured default.
 
-3. **Create the change directory**
+3. **Create a working branch before writing any artifacts**
+
+   Never author planning artifacts on `main`. Before `openspec new change` or any
+   artifact write:
+
+   - Confirm the change is new: run `openspec list --json`; if a change with this
+     name already exists, stop and ask whether to continue it or pick a new name.
+   - Branch from an up-to-date `main`: if you're not already on fresh main, ask
+     which base to branch from (they may want to run `/opsx-explore` first).
+   - Create the branch, named after the change:
+     ```bash
+     git checkout -b "<branch-name>"
+     ```
+     (change `add-user-auth` → branch `add-user-auth`)
+   - If a branch with that name already exists, ask whether to reuse it or pick
+     another — never silently reuse or overwrite.
+   - Do not push or open a PR; proposals stay local until implemented.
+
+4. **Create the change directory**
 
    Choose one schema form below. If a registered store is selected, append `--store "<store-id>"` to that command and each later OpenSpec command shown below that accepts `--store`.
 
@@ -68,7 +86,7 @@ When the user is ready to implement, they must start the apply workflow explicit
    ```
    This creates a scaffolded change in the planning home resolved by the CLI with `.openspec.yaml`.
 
-4. **Get the artifact build order**
+5. **Get the artifact build order**
    ```bash
    openspec status --change "<name>" --json
    ```
@@ -77,7 +95,7 @@ When the user is ready to implement, they must start the apply workflow explicit
    - `artifacts`: list of all artifacts, each with its `status` and its `requires` edges (the artifact IDs it directly depends on)
    - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
 
-5. **Create every artifact in the required set**
+6. **Create every artifact in the required set**
 
    Use a todo list to track progress through the artifacts.
 
@@ -116,7 +134,7 @@ When the user is ready to implement, they must start the apply workflow explicit
       - Ask the user to clarify
       - Then continue with creation
 
-6. **Show final status**
+7. **Show final status**
    ```bash
    openspec status --change "<name>"
    ```
@@ -141,6 +159,7 @@ After completing all artifacts, summarize:
   - These guide what you write, but should never appear in the output
 
 **Guardrails**
+- Create a dedicated branch before writing any artifact; never author proposals on `main` or a stale checkout
 - The request that invoked this workflow authorizes planning only. Any implementation or apply instruction in that request does not carry forward. Do NOT implement the change, start the apply workflow, or edit project code during this workflow. After presenting the artifacts, stop and wait for a new user request to start the apply workflow
 - Create every artifact the apply phase transitively depends on, not just the ids listed in `apply.requires`
 - Always read dependency artifacts before creating a new one - re-read from disk, not from conversation memory (files may have changed since you last saw them)
