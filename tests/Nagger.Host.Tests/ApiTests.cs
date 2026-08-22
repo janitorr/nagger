@@ -434,6 +434,17 @@ public sealed class ApiTests
         string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
     }
 
+    [Fact]
+    public void DispatchNotFound_GivenTaskDispatch_WhenLogged_ThenDoesNotIncludeTaskContent()
+    {
+        var logger = new CapturingLogger();
+
+        AppLog.DispatchNotFound(logger, "CompleteOneShotTaskCommand", "TaskNotFoundException", 10);
+
+        logger.EventIds.ShouldBe([1007]);
+        string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
+    }
+
     private static async Task<long> CreateTaskAsync(
         HttpClient client,
         string title = "Task",

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Mediator;
+using Nagger.Core.Tasks;
 using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Host.Composition.Mediator;
@@ -30,6 +31,28 @@ public sealed class DispatchLoggingBehavior<TMessage, TResponse>(
                 logger,
                 message.GetType().Name,
                 nameof(ValidationException),
+                timer.ElapsedMilliseconds
+            );
+            throw;
+        }
+        catch (TaskNotFoundException)
+        {
+            timer.Stop();
+            AppLog.DispatchNotFound(
+                logger,
+                message.GetType().Name,
+                nameof(TaskNotFoundException),
+                timer.ElapsedMilliseconds
+            );
+            throw;
+        }
+        catch (RecurringTaskNotFoundException)
+        {
+            timer.Stop();
+            AppLog.DispatchNotFound(
+                logger,
+                message.GetType().Name,
+                nameof(RecurringTaskNotFoundException),
                 timer.ElapsedMilliseconds
             );
             throw;
