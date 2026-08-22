@@ -1,21 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "lsp": true,
-  "agent": {
-    "plan": {
-      "permission": {
-        "edit": { "*": "deny", "openspec/**": "allow" },
-        "bash": {
-          "*": "ask",
-          "openspec *": "allow",
-          "git status *": "allow",
-          "git branch *": "allow",
-          "git symbolic-ref *": "allow",
-          "git fetch *": "allow",
-          "git pull *": "allow",
-          "git checkout *": "allow"
-        }
-      }
-    }
-  }
+  "lsp": true
 }

@@ -1,6 +1,6 @@
 ---
 description: "Update a change - revise existing planning artifacts and keep them coherent (Experimental)"
-agent: plan
+agent: build
 model: opencode-go/deepseek-v4-pro
 ---
 

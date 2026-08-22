@@ -1,6 +1,6 @@
 ---
 description: "Propose a new change - create it and generate all artifacts in one step"
-agent: plan
+agent: build
 model: opencode-go/deepseek-v4-pro
 ---
 

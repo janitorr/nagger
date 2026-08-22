@@ -1,6 +1,6 @@
 ---
 description: "Enter explore mode - think through ideas, investigate problems, clarify requirements"
-agent: plan
+agent: build
 model: opencode-go/deepseek-v4-pro
 ---
 
