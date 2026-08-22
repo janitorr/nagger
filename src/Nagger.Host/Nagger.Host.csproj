@@ -22,5 +22,7 @@
     <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
 </Project>

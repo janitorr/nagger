@@ -7,27 +7,27 @@ namespace Nagger.Host.Infrastructure;
 public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) : IRecurringTaskTemplateStore
 {
     public async ValueTask<RecurringTaskTemplate> AddAsync(
-        RecurringTaskTemplate template,
+        RecurringTaskTemplate recurringTemplate,
         CancellationToken cancellationToken
     )
     {
         var entity = new RecurringTaskTemplateEntity
         {
-            Title = template.Title,
-            StartDate = template.StartDate,
-            RecurrenceEvery = template.Recurrence.Every,
-            RecurrenceUnit = template.Recurrence.Unit.ToString(),
-            ReminderPolicy = template.ReminderPolicy.ToContractValue(),
-            Status = template.Status.ToContractValue(),
-            CreatedAt = template.CreatedAt,
-            UpdatedAt = template.UpdatedAt,
-            CancelledAt = template.CancelledAt,
+            Title = recurringTemplate.Title,
+            StartDate = recurringTemplate.StartDate,
+            RecurrenceEvery = recurringTemplate.Recurrence.Every,
+            RecurrenceUnit = recurringTemplate.Recurrence.Unit.ToString(),
+            ReminderPolicy = recurringTemplate.ReminderPolicy.ToContractValue(),
+            Status = recurringTemplate.Status.ToContractValue(),
+            CreatedAt = recurringTemplate.CreatedAt,
+            UpdatedAt = recurringTemplate.UpdatedAt,
+            CancelledAt = recurringTemplate.CancelledAt,
         };
 
         await dbContext.RecurringTaskTemplates.AddAsync(entity, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return template with
+        return recurringTemplate with
         {
             Id = entity.Id,
         };
@@ -48,22 +48,22 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
         return ToModel(entity);
     }
 
-    public async ValueTask UpdateAsync(RecurringTaskTemplate template, CancellationToken cancellationToken)
+    public async ValueTask UpdateAsync(RecurringTaskTemplate recurringTemplate, CancellationToken cancellationToken)
     {
         var entity =
             await dbContext.RecurringTaskTemplates.FindAsync(
-                new object[] { template.Id },
+                new object[] { recurringTemplate.Id },
                 cancellationToken: cancellationToken
-            ) ?? throw new RecurringTaskNotFoundException(template.Id);
+            ) ?? throw new RecurringTaskNotFoundException(recurringTemplate.Id);
 
-        entity.Title = template.Title;
-        entity.StartDate = template.StartDate;
-        entity.RecurrenceEvery = template.Recurrence.Every;
-        entity.RecurrenceUnit = template.Recurrence.Unit.ToString();
-        entity.ReminderPolicy = template.ReminderPolicy.ToContractValue();
-        entity.Status = template.Status.ToContractValue();
-        entity.UpdatedAt = template.UpdatedAt;
-        entity.CancelledAt = template.CancelledAt;
+        entity.Title = recurringTemplate.Title;
+        entity.StartDate = recurringTemplate.StartDate;
+        entity.RecurrenceEvery = recurringTemplate.Recurrence.Every;
+        entity.RecurrenceUnit = recurringTemplate.Recurrence.Unit.ToString();
+        entity.ReminderPolicy = recurringTemplate.ReminderPolicy.ToContractValue();
+        entity.Status = recurringTemplate.Status.ToContractValue();
+        entity.UpdatedAt = recurringTemplate.UpdatedAt;
+        entity.CancelledAt = recurringTemplate.CancelledAt;
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

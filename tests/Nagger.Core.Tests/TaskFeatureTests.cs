@@ -580,21 +580,21 @@ public sealed class TaskFeatureTests
         public int Updates { get; private set; }
 
         public ValueTask<RecurringTaskTemplate> AddAsync(
-            RecurringTaskTemplate template,
+            RecurringTaskTemplate recurringTemplate,
             CancellationToken cancellationToken
         )
         {
-            template = template with { Id = Templates.Count + 1 };
-            Templates.Add(template);
-            return ValueTask.FromResult(template);
+            recurringTemplate = recurringTemplate with { Id = Templates.Count + 1 };
+            Templates.Add(recurringTemplate);
+            return ValueTask.FromResult(recurringTemplate);
         }
 
         public ValueTask<RecurringTaskTemplate?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
             ValueTask.FromResult(Templates.SingleOrDefault(x => x.Id == id));
 
-        public ValueTask UpdateAsync(RecurringTaskTemplate template, CancellationToken cancellationToken)
+        public ValueTask UpdateAsync(RecurringTaskTemplate recurringTemplate, CancellationToken cancellationToken)
         {
-            Templates[Templates.FindIndex(x => x.Id == template.Id)] = template;
+            Templates[Templates.FindIndex(x => x.Id == recurringTemplate.Id)] = recurringTemplate;
             Updates++;
             return ValueTask.CompletedTask;
         }

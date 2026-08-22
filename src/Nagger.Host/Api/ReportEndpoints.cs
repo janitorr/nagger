@@ -1,3 +1,4 @@
+using System.Globalization;
 using Mediator;
 using Nagger.Core.Tasks;
 
@@ -30,7 +31,7 @@ public sealed record MorningReportResponse(
         new(
             report.SchemaVersion,
             report.GeneratedAt,
-            report.Date.ToString("yyyy-MM-dd"),
+            report.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             new MorningReportSummaryResponse(report.Summary.DueToday, report.Summary.Overdue, report.Summary.Upcoming),
             report
                 .Items.Select(x => new MorningReportItemResponse(
