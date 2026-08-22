@@ -14,14 +14,25 @@ dotnet publish src/Nagger.Host -c Release -o .release
 ```
 
 On a machine without the .NET 10 runtime, produce a self-contained build that
-bundles the runtime instead:
+bundles the runtime instead, with the runtime identifier of the target machine
+(for a Raspberry Pi running 64-bit Raspberry Pi OS that is `linux-arm64`):
 
 ```bash
-dotnet publish src/Nagger.Host -c Release -o .release --self-contained
+dotnet publish src/Nagger.Host -c Release -o .release --self-contained -r linux-arm64
 ```
 
-The published host is `.release/Nagger.Host` (or `dotnet .release/Nagger.Host.dll`
-for the framework-dependent build).
+The published host is `.release/Nagger.Host`, which runs directly in both build
+modes.
+
+Copy the publish output to the machine that runs Hermes (Nagger must listen on
+the same machine, localhost only):
+
+```bash
+scp -r .release pi@<pi-address>:~/.release/
+```
+
+Throughout this guide, replace `pi` and the `/home/pi` paths with your username
+and home directory.
 
 ## 2. Run
 
@@ -29,7 +40,7 @@ Without a launch profile the host listens on `http://127.0.0.1:5000`, and the
 MCP endpoint is served at `/mcp`. For a one-off test run:
 
 ```bash
-dotnet .release/Nagger.Host.dll
+./.release/Nagger.Host
 ```
 
 For persistent, server-style operation use a systemd user unit. Create
@@ -43,17 +54,18 @@ Description=Nagger MCP task server
 Type=simple
 Restart=always
 WorkingDirectory=/home/pi/.local/share/nagger
-ExecStart=/home/pi/.release/Nagger.Host.dll
+ExecStart=/home/pi/.release/Nagger.Host
 
 [Install]
 WantedBy=default.target
 ```
 
 `Restart=always` keeps the service alive across crashes; `WorkingDirectory` is
-explicit so the process (and its SQLite file) lives in a known place. Start and
-enable it with:
+explicit so the process (and its SQLite file) lives in a known place. Create the
+working directory, then start and enable the unit:
 
 ```bash
+mkdir -p ~/.local/share/nagger
 systemctl --user daemon-reload
 systemctl --user enable --now nagger
 ```
@@ -64,11 +76,10 @@ Nagger stores tasks in SQLite. The default database path is `nagger.db`,
 resolved relative to the process working directory, so with the unit above the
 data lands at `/home/pi/.local/share/nagger/nagger.db`.
 
-To redirect the database to another path, set the `Nagger__DatabasePath`
-environment variable in the unit:
+To redirect the database to another path, add an `Environment=` line to the
+existing `[Service]` section of the unit:
 
 ```ini
-[Service]
 Environment=Nagger__DatabasePath=/home/pi/.local/share/nagger/nagger.db
 ```
 
