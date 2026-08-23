@@ -4,10 +4,8 @@ public sealed record TaskItem(
     long Id,
     string Title,
     DateTimeOffset DueAt,
-    ReminderPolicy ReminderPolicy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? LastReminderAt = null,
     OneShotTaskStatus Status = OneShotTaskStatus.Active,
     DateTimeOffset? CompletedAt = null,
     DateTimeOffset? CancelledAt = null

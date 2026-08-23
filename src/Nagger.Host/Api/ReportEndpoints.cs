@@ -41,8 +41,7 @@ public sealed record MorningReportResponse(
                     x.Type,
                     x.DueState,
                     x.DaysOverdue,
-                    x.DaysUntilDue,
-                    x.ReminderPolicy
+                    x.DaysUntilDue
                 ))
                 .ToList()
         );
@@ -57,6 +56,5 @@ public sealed record MorningReportItemResponse(
     string Type,
     string DueState,
     int? DaysOverdue,
-    int? DaysUntilDue,
-    string ReminderPolicy
+    int? DaysUntilDue
 );

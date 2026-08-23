@@ -35,10 +35,9 @@ Important personal obligations can disappear into notes, memory, or an incomplet
 
 | Use case                          | Problem solved                                                     | Successful outcome                                                                                                                          |
 | --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Capture a one-shot task           | A specific obligation may be forgotten.                            | The assistant creates a task from the person’s explicit request, with a due date and reminder policy.                                       |
+| Capture a one-shot task           | A specific obligation may be forgotten.                            | The assistant creates a task from the person’s explicit request, with a due date.                                       |
 | Capture a recurring task | Repeated maintenance work is easy to lose track of.             | The assistant creates a recurring template; its instances are scheduled on a configured cadence.                                  |
 | Generate the morning digest       | The person should not reconstruct priorities from scattered notes. | The AI assistant reads the deterministic report and creates a concise Morning Digest for the person, covering overdue, due-today, and next-seven-day tasks. |
-| Receive follow-up reminders *(planned)* | A due item can remain unfinished after its first reminder.    | `weekly-until-done` tasks are eligible for weekly follow-up until completed or cancelled.                                                   |
 | Complete, pause, or cancel a task | The system must reflect reality without deleting history.          | The assistant submits an explicit validated command; terminal task records remain intact.                                                   |
 
 ## Product principles
@@ -62,7 +61,6 @@ Important personal obligations can disappear into notes, memory, or an incomplet
 
 ### Planned next
 
-- Actual reminder delivery and weekly escalation until done.
 - Deployment automation.
 
 ### Future phase: Shopping ledger
@@ -105,14 +103,6 @@ Task statuses:
 - `done` — completed, no longer reminded.
 - `cancelled` — abandoned, no longer reminded.
 
-Reminder policies:
-
-- `none` — report only by due state, with no delivery behavior.
-- `once` — reserved for a single delivery when delivery is implemented.
-- `weekly-until-done` — reserved for weekly follow-up after the first delivery is implemented.
-
-The policy is stored and returned today. Nagger does not yet emit or record reminder delivery.
-
 ### Shopping — future phase
 
 Shopping items represent things to buy.
@@ -144,7 +134,6 @@ cancelledAt: null
 
 schedule:
   dueAt: 2026-09-02T09:00:00+03:00
-  reminderPolicy: weekly-until-done
 
 reporting:
   includeInMorningUpdate: true
@@ -171,7 +160,6 @@ schedule:
   recurrence:
     every: 1
     unit: months
-  reminderPolicy: weekly-until-done
 
 reporting:
   includeInMorningUpdate: true
@@ -241,16 +229,9 @@ recurrence:
 - For month-based recurrence, if the target day does not exist in the target month, use that month’s last day.
 - Complex calendar rules, holiday exclusions, and natural-language recurrence remain out of scope for the first version.
 
-### Report reads and reminder emission
+### Report reads
 
-Report endpoints are read-only. Generating, previewing, retrying, or reading a Morning Digest report must not update task state, reminder timestamps, or shopping state.
-
-Actual delivery and delivery tracking are planned. The intended delivery command is `POST /tasks/{id}/reminders/emitted`. When it is implemented and succeeds:
-
-- Set `lastRemindedAt` to current timestamp.
-- Set `updatedAt` to current timestamp.
-- If `reminderPolicy` is `weekly-until-done`, set `nextReminderAt` to current timestamp plus 7 days.
-- If `reminderPolicy` is `once`, clear `nextReminderAt` or mark reminder as sent.
+Report endpoints are read-only. Generating, previewing, retrying, or reading a Morning Digest report must not update task state or timestamps.
 
 ### Task state transitions
 
@@ -319,7 +300,7 @@ POST /tasks/{id}/cancel
 GET /reports/morning?date=2026-08-03
 ```
 
-One-shot creation requires `title`, `dueAt`, and an explicit `reminderPolicy`; no endpoint supplies a hidden default. Lifecycle operations use the numeric task `id` and return the updated task.
+One-shot creation requires `title` and `dueAt`. Lifecycle operations use the numeric task `id` and return the updated task.
 
 ### MCP
 
@@ -357,8 +338,7 @@ Report contract rules:
       "dueAt": "2026-08-01T09:00:00+03:00",
       "dueState": "overdue",
       "daysOverdue": 2,
-      "daysUntilDue": null,
-      "reminderPolicy": "once"
+      "daysUntilDue": null
     }
   ]
 }
@@ -381,17 +361,13 @@ Not allowed by default:
 
 ## Current acceptance criteria
 
-- A user can create one-shot tasks with an explicit due timestamp and reminder policy through REST or MCP.
+- A user can create one-shot tasks with an explicit due timestamp through REST or MCP.
 - A user can create recurring templates and complete their instances through REST or MCP; completing an instance schedules the next one deterministically.
 - The service returns deterministic due-state JSON for Morning Digest through REST or MCP.
 - Allowed lifecycle changes update `updatedAt` and relevant completion/cancellation timestamps.
-- Report reads are pure and do not alter task state or delivery state.
+- Report reads are pure and do not alter task state or timestamps.
 - No LLM inference is required to decide what is due.
 - Core behavior works without cloud dependency.
-
-## Planned acceptance criteria
-
-- Reminder delivery records `lastRemindedAt` and `nextReminderAt` deterministically.
 
 ## Open questions
 

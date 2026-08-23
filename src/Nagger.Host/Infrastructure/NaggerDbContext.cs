@@ -15,7 +15,6 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
         task.HasKey(x => x.Id);
         task.Property(x => x.Title).IsRequired();
         task.Property(x => x.DueAt).IsRequired();
-        task.Property(x => x.ReminderPolicy).IsRequired();
         task.Property(x => x.Status).IsRequired();
         task.Property(x => x.CreatedAt).IsRequired();
         task.Property(x => x.UpdatedAt).IsRequired();
@@ -27,7 +26,6 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
         template.Property(x => x.StartDate).IsRequired();
         template.Property(x => x.RecurrenceEvery).IsRequired();
         template.Property(x => x.RecurrenceUnit).IsRequired();
-        template.Property(x => x.ReminderPolicy).IsRequired();
         template.Property(x => x.Status).IsRequired();
         template.Property(x => x.CreatedAt).IsRequired();
         template.Property(x => x.UpdatedAt).IsRequired();
@@ -38,7 +36,6 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
         instance.Property(x => x.RecurringTaskId).IsRequired();
         instance.Property(x => x.Title).IsRequired();
         instance.Property(x => x.DueAt).IsRequired();
-        instance.Property(x => x.ReminderPolicy).IsRequired();
         instance.Property(x => x.Status).IsRequired();
         instance.Property(x => x.CreatedAt).IsRequired();
         instance.Property(x => x.UpdatedAt).IsRequired();
@@ -50,10 +47,8 @@ public sealed class TaskEntity
     public long Id { get; set; }
     public required string Title { get; set; }
     public DateTimeOffset DueAt { get; set; }
-    public required string ReminderPolicy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public DateTimeOffset? LastReminderAt { get; set; }
     public required string Status { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
     public DateTimeOffset? CancelledAt { get; set; }
@@ -65,7 +60,6 @@ public sealed class RecurringTaskInstanceEntity
     public long RecurringTaskId { get; set; }
     public required string Title { get; set; }
     public DateTimeOffset DueAt { get; set; }
-    public required string ReminderPolicy { get; set; }
     public required string Status { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
@@ -80,7 +74,6 @@ public sealed class RecurringTaskTemplateEntity
     public DateOnly StartDate { get; set; }
     public int RecurrenceEvery { get; set; }
     public required string RecurrenceUnit { get; set; }
-    public required string ReminderPolicy { get; set; }
     public required string Status { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

@@ -12,31 +12,24 @@ public sealed class TaskFeatureTests
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
-
-        var task = await handler.Handle(new("Pay rent", "2026-08-04T09:00:00+03:00", "weekly-until-done"), default);
-
+        var task = await handler.Handle(new("Pay rent", "2026-08-04T09:00:00+03:00"), default);
         task.Id.ShouldBe(1);
         task.Title.ShouldBe("Pay rent");
-        task.ReminderPolicy.ShouldBe(ReminderPolicy.WeeklyUntilDone);
         task.CreatedAt.ShouldBe(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero));
     }
 
     [Theory]
-    [InlineData(null, "2026-08-04T09:00:00+03:00", "once", "title")]
-    [InlineData(" ", "2026-08-04T09:00:00+03:00", "once", "title")]
-    [InlineData("Task", null, "once", "dueAt")]
-    [InlineData("Task", "2026-08-04T09:00:00", "once", "dueAt")]
-    [InlineData("Task", "2026-08-04T09:00:00+03:00", null, "reminderPolicy")]
-    [InlineData("Task", "2026-08-04T09:00:00+03:00", "daily", "reminderPolicy")]
-    public async Task Rejects_invalid_creation_values(string? title, string? dueAt, string? policy, string field)
+    [InlineData(null, "2026-08-04T09:00:00+03:00", "title")]
+    [InlineData(" ", "2026-08-04T09:00:00+03:00", "title")]
+    [InlineData("Task", null, "dueAt")]
+    [InlineData("Task", "2026-08-04T09:00:00", "dueAt")]
+    public async Task Rejects_invalid_creation_values(string? title, string? dueAt, string field)
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
-
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
-            await handler.Handle(new(title, dueAt, policy), default)
+            await handler.Handle(new(title, dueAt), default)
         );
-
         exception.Errors.Keys.ShouldContain(field);
         store.Tasks.ShouldBeEmpty();
     }
@@ -48,11 +41,9 @@ public sealed class TaskFeatureTests
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
-
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
-            await handler.Handle(new("Task", dueAt, "once"), default)
+            await handler.Handle(new("Task", dueAt), default)
         );
-
         exception.Errors.Keys.ShouldContain("dueAt");
         store.Tasks.ShouldBeEmpty();
     }
@@ -64,9 +55,7 @@ public sealed class TaskFeatureTests
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
-
-        var task = await handler.Handle(new("Task", dueAt, "once"), default);
-
+        var task = await handler.Handle(new("Task", dueAt), default);
         task.DueAt.ShouldBe(DateTimeOffset.Parse(dueAt, CultureInfo.InvariantCulture));
     }
 
@@ -75,11 +64,9 @@ public sealed class TaskFeatureTests
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
-
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
-            await handler.Handle(new("Task", "2026-08-02T09:00:00+03:00", "once"), default)
+            await handler.Handle(new("Task", "2026-08-02T09:00:00+03:00"), default)
         );
-
         exception.Errors.Keys.ShouldContain("dueAt");
         exception.Errors["dueAt"].ShouldBe(["Due timestamp cannot be in the past."]);
         store.Tasks.ShouldBeEmpty();
@@ -90,9 +77,7 @@ public sealed class TaskFeatureTests
     {
         var store = new MemoryStore();
         var handler = new CreateOneShotTaskHandler(store, new TestTimeProvider());
-
-        var task = await handler.Handle(new("Task", "2026-08-03T09:00:00+03:00", "once"), default);
-
+        var task = await handler.Handle(new("Task", "2026-08-03T09:00:00+03:00"), default);
         task.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero));
         store.Tasks.ShouldHaveSingleItem();
     }
@@ -101,42 +86,19 @@ public sealed class TaskFeatureTests
     public async Task MorningReport_GivenTasksAtEachDueState_WhenRequested_ThenReturnsExclusiveTimingFieldsWithoutWriting()
     {
         var store = new MemoryStore(
-            new TaskItem(
-                1,
-                "Today",
-                new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
-                default,
-                default
-            ),
-            new TaskItem(
-                2,
-                "Old",
-                new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.Once,
-                default,
-                default
-            ),
-            new TaskItem(
-                3,
-                "Later",
-                new DateTimeOffset(2026, 8, 5, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
-                default,
-                default
-            )
+            new TaskItem(1, "Today", new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero), default, default),
+            new TaskItem(2, "Old", new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.Zero), default, default),
+            new TaskItem(3, "Later", new DateTimeOffset(2026, 8, 5, 8, 0, 0, TimeSpan.Zero), default, default)
         );
         var handler = new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         );
-
         var first = await handler.Handle(new("2026-08-04"), default);
         var second = await handler.Handle(new("2026-08-04"), default);
-
         first.Summary.ShouldBe(new MorningReportSummary(1, 1, 1));
-        first.SchemaVersion.ShouldBe("3");
+        first.SchemaVersion.ShouldBe("4");
         first.Items.Count.ShouldBe(3);
         first.Items.Single(x => x.Id == 1).DueState.ShouldBe("due_today");
         first.Items.Single(x => x.Id == 1).Type.ShouldBe("one-shot");
@@ -156,30 +118,14 @@ public sealed class TaskFeatureTests
     public async Task MorningReport_GivenTasksAtAndBeyondSevenDayBoundary_WhenRequested_ThenIncludesOnlyTaskWithinWindow()
     {
         var store = new MemoryStore(
-            new TaskItem(
-                1,
-                "Within window",
-                new DateTimeOffset(2026, 8, 11, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
-                default,
-                default
-            ),
-            new TaskItem(
-                2,
-                "Beyond window",
-                new DateTimeOffset(2026, 8, 12, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
-                default,
-                default
-            )
+            new TaskItem(1, "Within window", new DateTimeOffset(2026, 8, 11, 8, 0, 0, TimeSpan.Zero), default, default),
+            new TaskItem(2, "Beyond window", new DateTimeOffset(2026, 8, 12, 8, 0, 0, TimeSpan.Zero), default, default)
         );
-
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
-
         report.Summary.ShouldBe(new MorningReportSummary(0, 0, 1));
         report.Items.ShouldHaveSingleItem().Id.ShouldBe(1);
         report.Items.Single().DueState.ShouldBe("upcoming");
@@ -192,21 +138,13 @@ public sealed class TaskFeatureTests
     {
         var timezone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Helsinki");
         var store = new MemoryStore(
-            new TaskItem(
-                1,
-                "Boundary",
-                new DateTimeOffset(2026, 8, 3, 21, 30, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
-                default,
-                default
-            )
+            new TaskItem(1, "Boundary", new DateTimeOffset(2026, 8, 3, 21, 30, 0, TimeSpan.Zero), default, default)
         );
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
             new TestTimeProvider(timezone)
         ).Handle(new("2026-08-04"), default);
-
         report.Summary.DueToday.ShouldBe(1);
     }
 
@@ -214,27 +152,12 @@ public sealed class TaskFeatureTests
     public async Task MorningReport_GivenMixedOneShotAndRecurringDueStates_WhenRequested_ThenOrdersChronologically()
     {
         var store = new MemoryStore(
-            new TaskItem(
-                1,
-                "Upcoming later",
-                new DateTimeOffset(2026, 8, 5, 9, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
-                default,
-                default
-            ),
-            new TaskItem(
-                2,
-                "Overdue",
-                new DateTimeOffset(2026, 8, 2, 9, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.Once,
-                default,
-                default
-            ),
+            new TaskItem(1, "Upcoming later", new DateTimeOffset(2026, 8, 5, 9, 0, 0, TimeSpan.Zero), default, default),
+            new TaskItem(2, "Overdue", new DateTimeOffset(2026, 8, 2, 9, 0, 0, TimeSpan.Zero), default, default),
             new TaskItem(
                 3,
                 "Due today noon",
                 new DateTimeOffset(2026, 8, 4, 10, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
                 default,
                 default
             ),
@@ -242,7 +165,6 @@ public sealed class TaskFeatureTests
                 4,
                 "Upcoming farthest",
                 new DateTimeOffset(2026, 8, 6, 13, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
                 default,
                 default
             ),
@@ -250,7 +172,6 @@ public sealed class TaskFeatureTests
                 5,
                 "Due today morning",
                 new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
                 default,
                 default
             )
@@ -261,7 +182,6 @@ public sealed class TaskFeatureTests
                 10,
                 "Recurring most overdue",
                 new DateTimeOffset(2026, 8, 1, 9, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.Once,
                 default,
                 default
             ),
@@ -270,18 +190,15 @@ public sealed class TaskFeatureTests
                 11,
                 "Recurring early today",
                 new DateTimeOffset(2026, 8, 4, 7, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.Once,
                 default,
                 default
             )
         );
-
         var report = await new MorningReportHandler(
             store,
             instanceStore,
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
-
         report.Summary.ShouldBe(new MorningReportSummary(3, 2, 2));
         report.Items.Select(x => x.Id).ShouldBe([10, 2, 11, 5, 3, 1, 4]);
         report
@@ -295,40 +212,10 @@ public sealed class TaskFeatureTests
     }
 
     [Fact]
-    public async Task MorningReport_GivenWeeklyReminderPolicy_WhenRequested_ThenReturnsContractValue()
-    {
-        var store = new MemoryStore(
-            new TaskItem(
-                1,
-                "Weekly",
-                new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.WeeklyUntilDone,
-                default,
-                default
-            )
-        );
-
-        var report = await new MorningReportHandler(
-            store,
-            new MemoryRecurringTaskInstanceStore(),
-            new TestTimeProvider(TimeZoneInfo.Utc)
-        ).Handle(new("2026-08-04"), default);
-
-        report.Items.ShouldHaveSingleItem().ReminderPolicy.ShouldBe("weekly-until-done");
-    }
-
-    [Fact]
     public async Task MorningReport_GivenActiveRecurringInstance_WhenRequested_ThenReportsUnderTemplateIdAsRecurring()
     {
         var store = new MemoryStore(
-            new TaskItem(
-                1,
-                "One-shot",
-                new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
-                default,
-                default
-            )
+            new TaskItem(1, "One-shot", new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero), default, default)
         );
         var instanceStore = new MemoryRecurringTaskInstanceStore(
             new RecurringTaskInstance(
@@ -336,24 +223,20 @@ public sealed class TaskFeatureTests
                 5,
                 "Team sync",
                 new DateTimeOffset(2026, 8, 4, 9, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.Once,
                 default,
                 default
             )
         );
-
         var report = await new MorningReportHandler(
             store,
             instanceStore,
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
-
         report.Summary.ShouldBe(new MorningReportSummary(2, 0, 0));
         var recurring = report.Items.Single(x => x.Type == "recurring");
         recurring.Id.ShouldBe(5);
         recurring.Title.ShouldBe("Team sync");
         recurring.DueState.ShouldBe("due_today");
-        recurring.ReminderPolicy.ShouldBe("once");
     }
 
     [Theory]
@@ -367,19 +250,16 @@ public sealed class TaskFeatureTests
                 1,
                 "Inactive",
                 new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero),
-                ReminderPolicy.None,
                 default,
                 default,
                 Status: status
             )
         );
-
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceStore(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
-
         report.Summary.ShouldBe(new MorningReportSummary(0, 0, 0));
         report.Items.ShouldBeEmpty();
     }
@@ -388,22 +268,12 @@ public sealed class TaskFeatureTests
     public async Task ListOpenOneShotTasks_GivenMixedStatuses_WhenRequested_ThenReturnsActiveAndPausedInAscendingIdOrder()
     {
         var store = new MemoryStore(
-            new TaskItem(4, "Done", default, ReminderPolicy.None, default, default, Status: OneShotTaskStatus.Done),
-            new TaskItem(3, "Paused", default, ReminderPolicy.None, default, default, Status: OneShotTaskStatus.Paused),
-            new TaskItem(
-                2,
-                "Cancelled",
-                default,
-                ReminderPolicy.None,
-                default,
-                default,
-                Status: OneShotTaskStatus.Cancelled
-            ),
-            new TaskItem(1, "Active", default, ReminderPolicy.None, default, default)
+            new TaskItem(4, "Done", default, default, default, Status: OneShotTaskStatus.Done),
+            new TaskItem(3, "Paused", default, default, default, Status: OneShotTaskStatus.Paused),
+            new TaskItem(2, "Cancelled", default, default, default, Status: OneShotTaskStatus.Cancelled),
+            new TaskItem(1, "Active", default, default, default)
         );
-
         var tasks = await new ListOpenOneShotTasksHandler(store).Handle(new(), default);
-
         tasks.Select(task => task.Id).ShouldBe([1, 3]);
     }
 
@@ -414,14 +284,11 @@ public sealed class TaskFeatureTests
             1,
             "Active",
             new DateTimeOffset(2026, 8, 4, 9, 0, 0, TimeSpan.FromHours(3)),
-            ReminderPolicy.Once,
             new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero)
         );
         var store = new MemoryStore(original);
-
         var tasks = await new ListOpenOneShotTasksHandler(store).Handle(new(), default);
-
         tasks.ShouldHaveSingleItem().ShouldBe(original);
         store.Tasks.ShouldHaveSingleItem().ShouldBe(original);
         store.Updates.ShouldBe(0);
@@ -455,13 +322,9 @@ public sealed class TaskFeatureTests
         OneShotTaskStatus expected
     )
     {
-        var store = new MemoryStore(
-            new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial)
-        );
+        var store = new MemoryStore(new TaskItem(1, "Task", default, default, default, Status: initial));
         var handler = HandlerFor(expected, store);
-
         var task = await handler();
-
         task.Status.ShouldBe(expected);
         task.UpdatedAt.ShouldBe(new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero));
         store.Tasks.Single().ShouldBe(task);
@@ -487,7 +350,6 @@ public sealed class TaskFeatureTests
     public async Task Complete_GivenMissingTask_WhenCompleteRequested_ThenThrowsNotFound()
     {
         var handler = new CompleteOneShotTaskHandler(new MemoryStore(), new TestTimeProvider());
-
         await Should.ThrowAsync<TaskNotFoundException>(async () => await handler.Handle(new(42), default));
     }
 
@@ -502,11 +364,9 @@ public sealed class TaskFeatureTests
         OneShotTaskStatus target
     )
     {
-        var original = new TaskItem(1, "Task", default, ReminderPolicy.None, default, default, Status: initial);
+        var original = new TaskItem(1, "Task", default, default, default, Status: initial);
         var store = new MemoryStore(original);
-
         var exception = await Should.ThrowAsync<ValidationException>(async () => await HandlerFor(target, store)());
-
         exception.Errors.Keys.ShouldContain("status");
         store.Tasks.Single().ShouldBe(original);
         store.Updates.ShouldBe(0);

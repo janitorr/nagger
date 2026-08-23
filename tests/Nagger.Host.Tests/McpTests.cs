@@ -135,7 +135,6 @@ public sealed class McpTests
         createTool.GetProperty("description").GetString()!.ShouldContain("single task", Case.Insensitive);
         requiredFields.ShouldContain("title");
         requiredFields.ShouldContain("dueAt");
-        requiredFields.ShouldContain("reminderPolicy");
     }
 
     [Fact]
@@ -170,12 +169,7 @@ public sealed class McpTests
             new
             {
                 name = "create_one_shot_task",
-                arguments = new
-                {
-                    title = "Pay rent",
-                    dueAt = "2026-08-04T09:00:00+03:00",
-                    reminderPolicy = "once",
-                },
+                arguments = new { title = "Pay rent", dueAt = "2026-08-04T09:00:00+03:00" },
             }
         );
         var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
@@ -296,7 +290,7 @@ public sealed class McpTests
         );
         var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        report.GetProperty("schemaVersion").GetString().ShouldBe("3");
+        report.GetProperty("schemaVersion").GetString().ShouldBe("4");
         report.GetProperty("summary").GetProperty("dueToday").GetInt32().ShouldBe(1);
         var item = report.GetProperty("items")[0];
         item.GetProperty("type").GetString().ShouldBe("one-shot");
@@ -322,7 +316,7 @@ public sealed class McpTests
         );
         var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        report.GetProperty("schemaVersion").GetString().ShouldBe("3");
+        report.GetProperty("schemaVersion").GetString().ShouldBe("4");
         report.GetProperty("summary").GetProperty("upcoming").GetInt32().ShouldBe(1);
         var item = report.GetProperty("items")[0];
         item.GetProperty("dueState").GetString().ShouldBe("upcoming");
@@ -342,16 +336,7 @@ public sealed class McpTests
             session,
             2,
             "tools/call",
-            new
-            {
-                name = "create_one_shot_task",
-                arguments = new
-                {
-                    title = "",
-                    dueAt = "not-a-date",
-                    reminderPolicy = "daily",
-                },
-            }
+            new { name = "create_one_shot_task", arguments = new { title = "", dueAt = "not-a-date" } }
         );
 
         response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
@@ -452,7 +437,6 @@ public sealed class McpTests
                     startDate,
                     recurrenceEvery = 1,
                     recurrenceUnit = "weeks",
-                    reminderPolicy = "once",
                 },
             }
         );
@@ -653,7 +637,6 @@ public sealed class McpTests
                     startDate = "not-a-date",
                     recurrenceEvery = 0,
                     recurrenceUnit = "hourly",
-                    reminderPolicy = "daily",
                 },
             }
         );
@@ -681,7 +664,6 @@ public sealed class McpTests
                     startDate = FutureStartDate(),
                     recurrenceEvery = 1,
                     recurrenceUnit = "weeks",
-                    reminderPolicy = "once",
                 },
             }
         );
@@ -703,16 +685,7 @@ public sealed class McpTests
             session,
             requestId,
             "tools/call",
-            new
-            {
-                name = "create_one_shot_task",
-                arguments = new
-                {
-                    title,
-                    dueAt,
-                    reminderPolicy = "none",
-                },
-            }
+            new { name = "create_one_shot_task", arguments = new { title, dueAt } }
         );
         return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
     }

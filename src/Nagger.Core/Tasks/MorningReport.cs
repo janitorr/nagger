@@ -23,8 +23,7 @@ public sealed record MorningReportItem(
     string Type,
     string DueState,
     int? DaysOverdue,
-    int? DaysUntilDue,
-    string ReminderPolicy
+    int? DaysUntilDue
 );
 
 public sealed class MorningReportHandler(
@@ -66,7 +65,6 @@ public sealed class MorningReportHandler(
                 task.Id,
                 task.Title,
                 task.DueAt,
-                task.ReminderPolicy.ToContractValue(),
                 "one-shot"
             );
         foreach (var instance in instances)
@@ -80,14 +78,13 @@ public sealed class MorningReportHandler(
                 instance.RecurringTaskId,
                 instance.Title,
                 instance.DueAt,
-                instance.ReminderPolicy.ToContractValue(),
                 "recurring"
             );
 
         items = items.OrderBy(x => x.DueAt).ToList();
 
         return new MorningReport(
-            "3",
+            "4",
             timeProvider.GetUtcNow(),
             reportDate,
             new MorningReportSummary(dueToday, overdue, upcoming),
@@ -105,7 +102,6 @@ public sealed class MorningReportHandler(
         long id,
         string title,
         DateTimeOffset dueAt,
-        string reminderPolicy,
         string type
     )
     {
@@ -114,7 +110,7 @@ public sealed class MorningReportHandler(
         if (comparison == 0)
         {
             dueToday++;
-            items.Add(new MorningReportItem(id, title, dueAt, type, "due_today", null, null, reminderPolicy));
+            items.Add(new MorningReportItem(id, title, dueAt, type, "due_today", null, null));
         }
         else if (comparison < 0)
         {
@@ -127,8 +123,7 @@ public sealed class MorningReportHandler(
                     type,
                     "overdue",
                     reportDate.DayNumber - itemDate.DayNumber,
-                    null,
-                    reminderPolicy
+                    null
                 )
             );
         }
@@ -143,8 +138,7 @@ public sealed class MorningReportHandler(
                     type,
                     "upcoming",
                     null,
-                    itemDate.DayNumber - reportDate.DayNumber,
-                    reminderPolicy
+                    itemDate.DayNumber - reportDate.DayNumber
                 )
             );
         }
