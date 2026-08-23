@@ -5,7 +5,7 @@ Provide deterministic, versioned morning task data for downstream digest generat
 ## Requirements
 
 ### Requirement: Produce a versioned morning task report
-The service SHALL provide `GET /reports/morning?date=YYYY-MM-DD`. For a valid requested date, it SHALL return JSON with `schemaVersion` of `"3"`, `generatedAt`, `date`, a task summary with counts for `dueToday`, `overdue`, and `upcoming`, and task item detail for active tasks that are overdue, due today, or due within the inclusive seven-calendar-day window after the requested date. Each task item SHALL use camelCase fields including `type`, `dueAt`, `dueState`, `daysOverdue`, `daysUntilDue`, and `reminderPolicy`.
+The service SHALL provide `GET /reports/morning?date=YYYY-MM-DD`. For a valid requested date, it SHALL return JSON with `schemaVersion` of `"4"`, `generatedAt`, `date`, a task summary with counts for `dueToday`, `overdue`, and `upcoming`, and task item detail for active tasks that are overdue, due today, or due within the inclusive seven-calendar-day window after the requested date. Each task item SHALL use camelCase fields including `type`, `dueAt`, `dueState`, `daysOverdue`, and `daysUntilDue`.
 
 The `type` field SHALL be `one-shot` for one-shot tasks and `recurring` for recurring tasks. A recurring item SHALL use the recurring task template id as its `id` and SHALL report the due timestamp of its current active instance.
 
@@ -49,11 +49,11 @@ The service SHALL order the `items` array chronologically by due timestamp so th
 - **THEN** the recurring item appears before the later-due one-shot item, regardless of type or id
 
 ### Requirement: Keep report reads free of state changes
-Generating a morning report SHALL NOT create, update, or delete tasks, and SHALL NOT update task timestamps or reminder state.
+Generating a morning report SHALL NOT create, update, or delete tasks, and SHALL NOT update task timestamps.
 
 #### Scenario: Read a report repeatedly
 - **WHEN** a client requests the same morning report more than once
-- **THEN** task records and reminder timestamps remain unchanged by each report read
+- **THEN** task records and timestamps remain unchanged by each report read
 
 ### Requirement: Validate the report date
 The service SHALL reject a morning report request without a `date` query parameter or with a date that is not formatted as `YYYY-MM-DD`.
