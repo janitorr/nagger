@@ -16,7 +16,7 @@ status: draft
 
 Create a deterministic local service that manages personal reminders and exposes them through REST and MCP for an assistant to use.
 
-The current release ships the one-shot task lifecycle, recurring task templates with their instances, and the deterministic morning report. Reminder delivery and a shopping ledger remain planned product capabilities rather than implied shipping behavior.
+The current release ships the one-shot task lifecycle, recurring task templates with their instances, and the deterministic morning report. The morning report is the only delivery channel; a shopping ledger remains a planned product capability rather than implied shipping behavior.
 
 The service exists so the morning update can report useful things without an LLM guessing from free-form notes.
 
