@@ -12,10 +12,10 @@ The service SHALL host a Model Context Protocol server using the streamable-HTTP
 - **THEN** the service completes MCP initialization and advertises the Nagger task tools
 
 ### Requirement: Create one-shot tasks through MCP
-The MCP server SHALL expose a `create_one_shot_task` tool accepting `title`, `dueAt`, and `reminderPolicy`. It SHALL create a task through the existing Core create-task operation and return a structured task representation containing the same task fields and values as the REST task representation.
+The MCP server SHALL expose a `create_one_shot_task` tool accepting `title` and `dueAt`. It SHALL create a task through the existing Core create-task operation and return a structured task representation containing the same task fields and values as the REST task representation.
 
 #### Scenario: Create a task through MCP
-- **WHEN** a client calls `create_one_shot_task` with a nonempty title, an offset-qualified due timestamp, and a supported reminder policy
+- **WHEN** a client calls `create_one_shot_task` with a nonempty title and an offset-qualified due timestamp
 - **THEN** the server persists an active one-shot task and returns its assigned id, schedule, lifecycle state, and timestamps
 
 #### Scenario: Reject an invalid MCP task
@@ -60,7 +60,7 @@ The MCP server SHALL expose a `get_morning_report` tool accepting a `date` in `Y
 
 #### Scenario: Read a morning report through MCP
 - **WHEN** a client calls `get_morning_report` with a valid date
-- **THEN** the server returns the report classified in the configured timezone without changing task or reminder state
+- **THEN** the server returns the report classified in the configured timezone without changing task state
 
 #### Scenario: Reject an invalid report date
 - **WHEN** a client calls `get_morning_report` without a date or with a malformed date

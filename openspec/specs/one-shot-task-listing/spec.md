@@ -9,7 +9,7 @@ The service SHALL provide `GET /tasks/one-shot` with no required query parameter
 
 #### Scenario: List active and paused tasks
 - **WHEN** a client requests `GET /tasks/one-shot` after active, paused, done, and cancelled one-shot tasks have been persisted
-- **THEN** the response contains only the active and paused tasks in ascending ID order, with each task's ID, title, type, status, due timestamp, reminder policy, and lifecycle timestamps
+- **THEN** the response contains only the active and paused tasks in ascending ID order, with each task's ID, title, type, status, due timestamp, and lifecycle timestamps
 
 #### Scenario: List when no open tasks exist
 - **WHEN** a client requests `GET /tasks/one-shot` and no active or paused one-shot tasks exist
