@@ -47,7 +47,6 @@ public sealed class CompleteRecurringTaskHandler(
             RecurringTaskId: template.Id,
             Title: template.Title,
             DueAt: nextDueDate.ToDateTimeOffset(timeProvider.LocalTimeZone),
-            ReminderPolicy: template.ReminderPolicy,
             CreatedAt: timeProvider.GetUtcNow(),
             UpdatedAt: timeProvider.GetUtcNow(),
             Status: RecurringTaskInstanceStatus.Active

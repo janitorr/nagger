@@ -62,11 +62,10 @@ Nagger.Core/
    ├─ ManageOneShotTaskLifecycle.cs
    ├─ MorningReport.cs
    ├─ Ports.cs
-   ├─ ReminderPolicy.cs
    └─ TaskItem.cs
 ```
 
-The current implementation proves one-shot creation, lifecycle transitions, and morning reports. Recurring tasks, reminder delivery, editing, and listing become new feature slices when their product contracts are settled.
+The current implementation proves one-shot creation, lifecycle transitions, and morning reports. Recurring tasks, editing, and listing become new feature slices when their product contracts are settled.
 
 Shared task rules and model types move out only when multiple features genuinely need them.
 
@@ -82,7 +81,7 @@ Local development already uses the Host and SQLite topology. The planned Pi depl
 
 SQLite is the canonical store. EF Core migrations define and evolve its schema; the SQLite provider supplies persistence.
 
-The proven slice establishes only the schema needed for one-shot tasks and their lifecycle. It does not pre-design an event store, shopping tables, concurrency policy, or a full reminder delivery ledger before the service has earned them.
+The proven slice establishes only the schema needed for one-shot tasks and their lifecycle. It does not pre-design an event store, shopping tables, or a concurrency policy before the service has earned them.
 
 ## Proven first vertical slice
 
@@ -122,13 +121,12 @@ This proved:
 - REST and MCP integration over the same Core operations;
 - direct state inspection when needed.
 
-The report endpoint remains read-only. A report read must not update reminder timestamps or task state.
+The report endpoint remains read-only. A report read must not update task state or timestamps.
 
 ## Deliberately deferred until iteration teaches us something
 
 - recurring task implementation;
 - event/history table design;
-- reminder delivery idempotency and delivery references;
 - editing semantics;
 - detailed AI write-authority policy;
 - report ordering and upcoming-item policy;

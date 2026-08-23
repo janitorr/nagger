@@ -31,14 +31,10 @@ public sealed class McpTaskTools(IMediator mediator)
             )
         ]
             string? dueAt,
-        [RequiredAttribute, Description("Required reminder policy: none, once, or weekly-until-done.")]
-            string? reminderPolicy,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
-            McpTaskResponse.From(
-                await mediator.Send(new CreateOneShotTaskCommand(title, dueAt, reminderPolicy), cancellationToken)
-            )
+            McpTaskResponse.From(await mediator.Send(new CreateOneShotTaskCommand(title, dueAt), cancellationToken))
         );
 
     [McpServerTool(
@@ -128,8 +124,6 @@ public sealed class McpTaskTools(IMediator mediator)
         [RequiredAttribute, Description("Required positive interval between recurrences, for example 1.")]
             int? recurrenceEvery,
         [RequiredAttribute, Description("Required recurrence unit: days, weeks, or months.")] string? recurrenceUnit,
-        [RequiredAttribute, Description("Required reminder policy: none, once, or weekly-until-done.")]
-            string? reminderPolicy,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
@@ -138,8 +132,7 @@ public sealed class McpTaskTools(IMediator mediator)
                     new CreateRecurringTaskCommand(
                         title,
                         startDate,
-                        new RecurrenceRuleInput(recurrenceEvery, recurrenceUnit),
-                        reminderPolicy
+                        new RecurrenceRuleInput(recurrenceEvery, recurrenceUnit)
                     ),
                     cancellationToken
                 )
@@ -292,7 +285,6 @@ public sealed record McpTaskResponse(
     string Type,
     string Status,
     DateTimeOffset DueAt,
-    string ReminderPolicy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     DateTimeOffset? CompletedAt,
@@ -306,7 +298,6 @@ public sealed record McpTaskResponse(
             "one-shot",
             task.Status.ToContractValue(),
             task.DueAt,
-            task.ReminderPolicy.ToContractValue(),
             task.CreatedAt,
             task.UpdatedAt,
             task.CompletedAt,
@@ -321,7 +312,6 @@ public sealed record McpRecurringTemplateResponse(
     string Title,
     string StartDate,
     McpRecurrenceRuleResponse Recurrence,
-    string ReminderPolicy,
     string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
@@ -334,7 +324,6 @@ public sealed record McpRecurringTemplateResponse(
             template.Title,
             template.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             new McpRecurrenceRuleResponse(template.Recurrence.Every, template.Recurrence.Unit.ToContractValue()),
-            template.ReminderPolicy.ToContractValue(),
             template.Status.ToContractValue(),
             template.CreatedAt,
             template.UpdatedAt,
@@ -351,7 +340,6 @@ public sealed record McpRecurringInstanceResponse(
     string Type,
     string Status,
     DateTimeOffset DueAt,
-    string ReminderPolicy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     DateTimeOffset? CompletedAt,
@@ -366,7 +354,6 @@ public sealed record McpRecurringInstanceResponse(
             "recurring",
             instance.Status.ToContractValue(),
             instance.DueAt,
-            instance.ReminderPolicy.ToContractValue(),
             instance.CreatedAt,
             instance.UpdatedAt,
             instance.CompletedAt,
@@ -400,8 +387,7 @@ public sealed record McpMorningReportResponse(
                     item.Type,
                     item.DueState,
                     item.DaysOverdue,
-                    item.DaysUntilDue,
-                    item.ReminderPolicy
+                    item.DaysUntilDue
                 ))
                 .ToList()
         );
@@ -416,6 +402,5 @@ public sealed record McpMorningReportItemResponse(
     string Type,
     string DueState,
     int? DaysOverdue,
-    int? DaysUntilDue,
-    string ReminderPolicy
+    int? DaysUntilDue
 );

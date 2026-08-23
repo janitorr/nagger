@@ -4,9 +4,9 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Core.Tasks;
 
-public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt, string? ReminderPolicy) : ICommand<TaskItem>
+public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt) : ICommand<TaskItem>
 {
-    public (string Title, DateTimeOffset DueAt, ReminderPolicy ReminderPolicy) Parse(DateTimeOffset now)
+    public (string Title, DateTimeOffset DueAt) Parse(DateTimeOffset now)
     {
         var errors = new Dictionary<string, string[]>();
         if (string.IsNullOrWhiteSpace(Title))
@@ -30,16 +30,13 @@ public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt, stri
         )
             errors["dueAt"] = ["Due timestamp must be an ISO-8601 value with an explicit UTC offset."];
 
-        if (!ReminderPolicies.TryParse(ReminderPolicy, out var reminderPolicy))
-            errors["reminderPolicy"] = ["Reminder policy must be none, once, or weekly-until-done."];
-
         if (dueAt != default && dueAt < now)
             errors["dueAt"] = ["Due timestamp cannot be in the past."];
 
         if (errors.Count > 0)
             throw new ValidationException(errors);
 
-        return (Title!.Trim(), dueAt, reminderPolicy);
+        return (Title!.Trim(), dueAt);
     }
 }
 
@@ -49,7 +46,7 @@ public sealed class CreateOneShotTaskHandler(ITaskStore store, TimeProvider time
     public async ValueTask<TaskItem> Handle(CreateOneShotTaskCommand command, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
-        var (title, dueAt, reminderPolicy) = command.Parse(now);
-        return await store.AddAsync(new TaskItem(0, title, dueAt, reminderPolicy, now, now), cancellationToken);
+        var (title, dueAt) = command.Parse(now);
+        return await store.AddAsync(new TaskItem(0, title, dueAt, now, now), cancellationToken);
     }
 }

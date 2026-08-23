@@ -5,7 +5,6 @@ public sealed record RecurringTaskInstance(
     long RecurringTaskId,
     string Title,
     DateTimeOffset DueAt,
-    ReminderPolicy ReminderPolicy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     RecurringTaskInstanceStatus Status = RecurringTaskInstanceStatus.Active,

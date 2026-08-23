@@ -17,13 +17,13 @@ endpoint exposes these tools:
 
 | Tool | Purpose |
 | --- | --- |
-| `create_one_shot_task` | Create a one-shot reminder from `title`, `dueAt`, and `reminderPolicy`. |
+| `create_one_shot_task` | Create a one-shot reminder from `title` and `dueAt`. |
 | `complete_one_shot_task` | Complete an active reminder by `id`. |
 | `pause_one_shot_task` | Pause an active reminder by `id`. |
 | `resume_one_shot_task` | Resume a paused reminder by `id`. |
 | `cancel_one_shot_task` | Cancel an active or paused reminder by `id`. |
 | `list_one_shot_tasks` | Discover active and paused reminders and their lifecycle-tool `id` values. |
-| `create_recurring_task` | Create a recurring template from `title`, `startDate`, `recurrenceEvery`, `recurrenceUnit`, and `reminderPolicy`. |
+| `create_recurring_task` | Create a recurring template from `title`, `startDate`, `recurrenceEvery`, and `recurrenceUnit`. |
 | `complete_recurring_task` | Complete a recurring template's current active instance by template `id`; schedules the next instance. |
 | `pause_recurring_task` | Pause a recurring template and its current instance by template `id`. |
 | `resume_recurring_task` | Resume a paused recurring template and its current instance by template `id`. |
@@ -53,8 +53,7 @@ Request payload:
 ```json
 {
   "title": "Pay rent",
-  "dueAt": "2026-08-04T09:00:00+03:00",
-  "reminderPolicy": "once"
+  "dueAt": "2026-08-04T09:00:00+03:00"
 }
 ```
 
@@ -64,7 +63,6 @@ Required fields:
 | --- | --- | --- |
 | `title` | string | Nonempty; surrounding whitespace is trimmed. |
 | `dueAt` | string | ISO-8601 date-time with an explicit offset or `Z`, not in the past. |
-| `reminderPolicy` | string | One of `none`, `once`, or `weekly-until-done`. |
 
 Successful response: `201 Created`
 
@@ -75,7 +73,6 @@ Successful response: `201 Created`
   "type": "one-shot",
   "status": "active",
   "dueAt": "2026-08-04T09:00:00+03:00",
-  "reminderPolicy": "once",
   "createdAt": "2026-08-03T10:00:00+00:00",
   "updatedAt": "2026-08-03T10:00:00+00:00",
   "completedAt": null,
@@ -135,8 +132,7 @@ Request payload:
   "recurrence": {
     "every": 1,
     "unit": "weeks"
-  },
-  "reminderPolicy": "once"
+  }
 }
 ```
 
@@ -148,7 +144,6 @@ Required fields:
 | `startDate` | string | YYYY-MM-DD date, not in the past. |
 | `recurrence.every` | integer | Positive interval between recurrences. |
 | `recurrence.unit` | string | One of `days`, `weeks`, or `months`. |
-| `reminderPolicy` | string | One of `none`, `once`, or `weekly-until-done`. |
 
 Successful response: `201 Created`
 
@@ -161,7 +156,6 @@ Successful response: `201 Created`
     "every": 1,
     "unit": "weeks"
   },
-  "reminderPolicy": "once",
   "status": "active",
   "createdAt": "2026-08-03T10:00:00+00:00",
   "updatedAt": "2026-08-03T10:00:00+00:00",
@@ -206,7 +200,7 @@ Response: `200 OK`
 
 ```json
 {
-  "schemaVersion": "3",
+  "schemaVersion": "4",
   "generatedAt": "2026-08-03T10:00:00+00:00",
   "date": "2026-08-04",
   "summary": {
@@ -222,8 +216,7 @@ Response: `200 OK`
       "type": "one-shot",
       "dueState": "overdue",
       "daysOverdue": 2,
-      "daysUntilDue": null,
-      "reminderPolicy": "none"
+      "daysUntilDue": null
     },
     {
       "id": 1,
@@ -232,8 +225,7 @@ Response: `200 OK`
       "type": "one-shot",
       "dueState": "due_today",
       "daysOverdue": null,
-      "daysUntilDue": null,
-      "reminderPolicy": "once"
+      "daysUntilDue": null
     },
     {
       "id": 3,
@@ -242,8 +234,7 @@ Response: `200 OK`
       "type": "recurring",
       "dueState": "upcoming",
       "daysOverdue": null,
-      "daysUntilDue": 3,
-      "reminderPolicy": "weekly-until-done"
+      "daysUntilDue": 3
     }
   ]
 }
@@ -265,7 +256,7 @@ reminder's local due date. The report classifies active reminders as:
 | `overdue` | Local due date precedes requested date | Yes, with `daysOverdue` |
 | Upcoming | Local due date is 1 through 7 calendar days after requested date | Yes, with `daysUntilDue`; later tasks are excluded |
 
-`daysOverdue` is positive only for overdue items, and `daysUntilDue` is 1 through 7 only for upcoming items; both are `null` for due-today items. The report is read-only and does not alter reminder state or timestamps. `reminderPolicy` remains task metadata for future reminder delivery and does not affect report visibility.
+`daysOverdue` is positive only for overdue items, and `daysUntilDue` is 1 through 7 only for upcoming items; both are `null` for due-today items. The report is read-only and does not alter reminder state or timestamps.
 
 ## Errors
 

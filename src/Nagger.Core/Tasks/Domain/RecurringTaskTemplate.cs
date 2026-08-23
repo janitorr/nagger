@@ -5,7 +5,6 @@ public sealed record RecurringTaskTemplate(
     string Title,
     DateOnly StartDate,
     RecurrenceRule Recurrence,
-    ReminderPolicy ReminderPolicy,
     RecurringTaskStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,

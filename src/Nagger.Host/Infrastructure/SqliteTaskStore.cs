@@ -12,10 +12,8 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
         {
             Title = task.Title,
             DueAt = task.DueAt,
-            ReminderPolicy = task.ReminderPolicy.ToContractValue(),
             CreatedAt = task.CreatedAt,
             UpdatedAt = task.UpdatedAt,
-            LastReminderAt = task.LastReminderAt,
             Status = task.Status.ToContractValue(),
             CompletedAt = task.CompletedAt,
             CancelledAt = task.CancelledAt,
@@ -68,12 +66,8 @@ public sealed class SqliteTaskStore(NaggerDbContext database) : ITaskStore
             entity.Id,
             entity.Title,
             entity.DueAt,
-            entity.ReminderPolicy == "once" ? ReminderPolicy.Once
-                : entity.ReminderPolicy == "weekly-until-done" ? ReminderPolicy.WeeklyUntilDone
-                : ReminderPolicy.None,
             entity.CreatedAt,
             entity.UpdatedAt,
-            entity.LastReminderAt,
             OneShotTaskStatuses.FromContractValue(entity.Status),
             entity.CompletedAt,
             entity.CancelledAt

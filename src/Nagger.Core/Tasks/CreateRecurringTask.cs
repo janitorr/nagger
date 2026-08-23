@@ -4,16 +4,10 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Core.Tasks;
 
-public sealed record CreateRecurringTaskCommand(
-    string? Title,
-    string? StartDate,
-    RecurrenceRuleInput? Recurrence,
-    string? ReminderPolicy
-) : ICommand<RecurringTaskTemplate>
+public sealed record CreateRecurringTaskCommand(string? Title, string? StartDate, RecurrenceRuleInput? Recurrence)
+    : ICommand<RecurringTaskTemplate>
 {
-    public (string Title, DateOnly StartDate, RecurrenceRule Recurrence, ReminderPolicy ReminderPolicy) Parse(
-        DateOnly today
-    )
+    public (string Title, DateOnly StartDate, RecurrenceRule Recurrence) Parse(DateOnly today)
     {
         var errors = new Dictionary<string, string[]>();
         if (string.IsNullOrWhiteSpace(Title))
@@ -40,17 +34,13 @@ public sealed record CreateRecurringTaskCommand(
         if (!RecurrenceUnits.TryParse(Recurrence?.Unit, out unit))
             errors["recurrence.unit"] = ["Recurrence unit must be days, weeks, or months."];
 
-        var reminderPolicy = default(ReminderPolicy);
-        if (!ReminderPolicies.TryParse(ReminderPolicy, out reminderPolicy))
-            errors["reminderPolicy"] = ["Reminder policy must be none, once, or weekly-until-done."];
-
         if (startDate != default && startDate < today)
             errors["startDate"] = ["Start date cannot be in the past."];
 
         if (errors.Count > 0)
             throw new ValidationException(errors);
 
-        return (Title!.Trim(), startDate, new RecurrenceRule(every!.Value, unit), reminderPolicy);
+        return (Title!.Trim(), startDate, new RecurrenceRule(every!.Value, unit));
     }
 }
 
@@ -67,7 +57,7 @@ public sealed class CreateRecurringTaskHandler(
         CancellationToken cancellationToken
     )
     {
-        var (title, startDate, recurrence, reminderPolicy) = command.Parse(Today());
+        var (title, startDate, recurrence) = command.Parse(Today());
 
         var now = timeProvider.GetUtcNow();
         var createdTemplate = await templateStore.AddAsync(
@@ -76,7 +66,6 @@ public sealed class CreateRecurringTaskHandler(
                 Title: title,
                 StartDate: startDate,
                 Recurrence: recurrence,
-                ReminderPolicy: reminderPolicy,
                 Status: RecurringTaskStatus.Active,
                 CreatedAt: now,
                 UpdatedAt: now
@@ -89,7 +78,6 @@ public sealed class CreateRecurringTaskHandler(
             RecurringTaskId: createdTemplate.Id,
             Title: createdTemplate.Title,
             DueAt: createdTemplate.StartDate.ToDateTimeOffset(timeProvider.LocalTimeZone),
-            ReminderPolicy: createdTemplate.ReminderPolicy,
             CreatedAt: now,
             UpdatedAt: now,
             Status: RecurringTaskInstanceStatus.Active

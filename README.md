@@ -22,7 +22,7 @@ Here is a session where the assistant does exactly that:
 
 > **You:** Remind me to pick up the dry cleaning on Tuesday the 25th, around 5 in the evening. Once is fine.
 >
-> **Assistant:** _Tool note: `create_one_shot_task` — title "Pick up dry cleaning", dueAt `2026-08-25T17:00:00+03:00`, reminderPolicy `once`._
+> **Assistant:** _Tool note: `create_one_shot_task` — title "Pick up dry cleaning", dueAt `2026-08-25T17:00:00+03:00`._
 >
 > Saved. It will show up in the morning rundown.
 >
@@ -39,7 +39,7 @@ Here is a session where the assistant does exactly that:
 
 ## Available Now
 
-- Create active one-shot tasks with an explicit due time and reminder policy.
+- Create active one-shot tasks with an explicit due time.
 - Complete, pause, resume, or cancel tasks without losing their history.
 - Keep task data locally in SQLite.
 - Generate a morning report of due-today, overdue, and upcoming tasks for any requested date.
@@ -48,6 +48,5 @@ Here is a session where the assistant does exactly that:
 
 ## Coming Next
 
-- Reminder delivery and weekly follow-ups until a task is actually done.
 - A shopping ledger for the things you will definitely remember at the shop. Until you do not.
 - Deployment automation, so Nagger can get back to its important work: judging your follow-through.
