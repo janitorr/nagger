@@ -4,8 +4,10 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Core.Tasks;
 
+public sealed record CreateRecurringTaskResult(RecurringTaskTemplate Template, RecurringTaskInstance FirstInstance);
+
 public sealed record CreateRecurringTaskCommand(string? Title, string? StartDate, RecurrenceRuleInput? Recurrence)
-    : ICommand<RecurringTaskTemplate>
+    : ICommand<CreateRecurringTaskResult>
 {
     public (string Title, DateOnly StartDate, RecurrenceRule Recurrence) Parse(DateOnly today)
     {
@@ -50,9 +52,9 @@ public sealed class CreateRecurringTaskHandler(
     IRecurringTaskTemplateStore templateStore,
     IRecurringTaskInstanceStore instanceStore,
     TimeProvider timeProvider
-) : ICommandHandler<CreateRecurringTaskCommand, RecurringTaskTemplate>
+) : ICommandHandler<CreateRecurringTaskCommand, CreateRecurringTaskResult>
 {
-    public async ValueTask<RecurringTaskTemplate> Handle(
+    public async ValueTask<CreateRecurringTaskResult> Handle(
         CreateRecurringTaskCommand command,
         CancellationToken cancellationToken
     )
@@ -83,9 +85,9 @@ public sealed class CreateRecurringTaskHandler(
             Status: RecurringTaskInstanceStatus.Active
         );
 
-        await instanceStore.AddAsync(firstInstance, cancellationToken);
+        var persistedInstance = await instanceStore.AddAsync(firstInstance, cancellationToken);
 
-        return createdTemplate;
+        return new CreateRecurringTaskResult(createdTemplate, persistedInstance);
     }
 
     private DateOnly Today() =>

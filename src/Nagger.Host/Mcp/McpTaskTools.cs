@@ -113,10 +113,10 @@ public sealed class McpTaskTools(IMediator mediator)
     [McpServerTool(
         Name = "create_recurring_task",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(McpRecurringTemplateResponse)
+        OutputSchemaType = typeof(McpRecurringCreationResponse)
     )]
     [Description(
-        "Use when the user wants to set up a task that repeats on an interval, such as a weekly or monthly obligation. Creates a recurring template and its first instance; do not use for one-off reminders."
+        "Use when the user wants to set up a task that repeats on an interval, such as a weekly or monthly obligation. Creates a recurring template and its first instance; do not use for one-off reminders. The response contains both the created template under `template` and the newly created first instance under `firstInstance`; read the first due date from `firstInstance.dueAt`."
     )]
     public Task<CallToolResult> CreateRecurringTask(
         [RequiredAttribute, Description("Required nonempty task title.")] string? title,
@@ -127,7 +127,7 @@ public sealed class McpTaskTools(IMediator mediator)
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
-            McpRecurringTemplateResponse.From(
+            McpRecurringCreationResponse.From(
                 await mediator.Send(
                     new CreateRecurringTaskCommand(
                         title,
@@ -142,17 +142,17 @@ public sealed class McpTaskTools(IMediator mediator)
     [McpServerTool(
         Name = "complete_recurring_task",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(McpRecurringInstanceResponse)
+        OutputSchemaType = typeof(McpRecurringCompletionResponse)
     )]
     [Description(
-        "Use when the user says an active recurring-task instance is finished. Takes the recurring task template id returned by list_recurring_tasks, marks the template's current active instance done, and schedules the next instance from the template's recurrence."
+        "Use when the user says an active recurring-task instance is finished. Takes the recurring task template id returned by list_recurring_tasks, marks the template's current active instance done, and schedules the next instance from the template's recurrence. The response contains both the completed instance under `completedInstance` and the newly scheduled next instance under `nextInstance`; read the next due date from `nextInstance.dueAt`."
     )]
     public Task<CallToolResult> CompleteRecurringTask(
         [Description("Template id returned by create_recurring_task or list_recurring_tasks.")] long id,
         CancellationToken cancellationToken
     ) =>
         Run(async () =>
-            McpRecurringInstanceResponse.From(
+            McpRecurringCompletionResponse.From(
                 await mediator.Send(new CompleteRecurringTaskCommand(id), cancellationToken)
             )
         );
@@ -332,6 +332,30 @@ public sealed record McpRecurringTemplateResponse(
 }
 
 public sealed record McpRecurrenceRuleResponse(int Every, string Unit);
+
+public sealed record McpRecurringCreationResponse(
+    McpRecurringTemplateResponse Template,
+    McpRecurringInstanceResponse FirstInstance
+)
+{
+    public static McpRecurringCreationResponse From(CreateRecurringTaskResult result) =>
+        new(
+            McpRecurringTemplateResponse.From(result.Template),
+            McpRecurringInstanceResponse.From(result.FirstInstance)
+        );
+}
+
+public sealed record McpRecurringCompletionResponse(
+    McpRecurringInstanceResponse CompletedInstance,
+    McpRecurringInstanceResponse NextInstance
+)
+{
+    public static McpRecurringCompletionResponse From(CompleteRecurringTaskResult result) =>
+        new(
+            McpRecurringInstanceResponse.From(result.CompletedInstance),
+            McpRecurringInstanceResponse.From(result.NextInstance)
+        );
+}
 
 public sealed record McpRecurringInstanceResponse(
     long Id,

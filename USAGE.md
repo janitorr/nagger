@@ -149,19 +149,35 @@ Successful response: `201 Created`
 
 ```json
 {
-  "id": 1,
-  "title": "Team sync",
-  "startDate": "2026-08-06",
-  "recurrence": {
-    "every": 1,
-    "unit": "weeks"
+  "template": {
+    "id": 1,
+    "title": "Team sync",
+    "startDate": "2026-08-06",
+    "recurrence": {
+      "every": 1,
+      "unit": "weeks"
+    },
+    "status": "active",
+    "createdAt": "2026-08-03T10:00:00+00:00",
+    "updatedAt": "2026-08-03T10:00:00+00:00",
+    "cancelledAt": null
   },
-  "status": "active",
-  "createdAt": "2026-08-03T10:00:00+00:00",
-  "updatedAt": "2026-08-03T10:00:00+00:00",
-  "cancelledAt": null
+  "firstInstance": {
+    "id": 1,
+    "recurringTaskId": 1,
+    "title": "Team sync",
+    "type": "recurring",
+    "status": "active",
+    "dueAt": "2026-08-06T00:00:00+03:00",
+    "createdAt": "2026-08-03T10:00:00+00:00",
+    "updatedAt": "2026-08-03T10:00:00+00:00",
+    "completedAt": null,
+    "cancelledAt": null
+  }
 }
 ```
+
+The response envelope contains the created template under `template` and its first instance under `firstInstance`. The `Location` header points at `/tasks/recurring/{template.id}`.
 
 ### Manage A Recurring Template Or Instance
 
@@ -169,12 +185,45 @@ These endpoints have no request body and return `200 OK` with the affected repre
 
 | Action | Endpoint | `id` refers to | Result |
 | --- | --- | --- | --- |
-| Complete | `POST /tasks/recurring/{id}/complete` | the template id | Completes the template's current active instance and creates the next instance (completion date + interval). Returns the completed recurring instance. |
+| Complete | `POST /tasks/recurring/{id}/complete` | the template id | Completes the template's current active instance and creates the next instance (completion date + interval). Returns an envelope with the completed instance under `completedInstance` and the next instance under `nextInstance`. |
 | Pause | `POST /tasks/recurring/{id}/pause` | the template id | Sets the template to `paused` and pauses its current instance. Returns the template. |
 | Resume | `POST /tasks/recurring/{id}/resume` | the template id | Sets the template back to `active` and resumes its current instance. Returns the template. |
 | Cancel | `POST /tasks/recurring/{id}/cancel` | the template id | Sets the template to `cancelled`, sets `cancelledAt`, and cancels all its open instances. Returns the template. |
 
 All lifecycle endpoints resolve `{id}` as the **template id**. Completing a template with no active instance, pausing a paused template, or resuming an active template returns a `400 Bad Request` validation error. An unknown template id returns `404 Not Found`.
+
+Complete response: `200 OK`
+
+```json
+{
+  "completedInstance": {
+    "id": 1,
+    "recurringTaskId": 1,
+    "title": "Team sync",
+    "type": "recurring",
+    "status": "done",
+    "dueAt": "2026-08-06T00:00:00+03:00",
+    "createdAt": "2026-08-03T10:00:00+00:00",
+    "updatedAt": "2026-08-10T10:00:00+00:00",
+    "completedAt": "2026-08-10T10:00:00+00:00",
+    "cancelledAt": null
+  },
+  "nextInstance": {
+    "id": 2,
+    "recurringTaskId": 1,
+    "title": "Team sync",
+    "type": "recurring",
+    "status": "active",
+    "dueAt": "2026-08-13T00:00:00+03:00",
+    "createdAt": "2026-08-10T10:00:00+00:00",
+    "updatedAt": "2026-08-10T10:00:00+00:00",
+    "completedAt": null,
+    "cancelledAt": null
+  }
+}
+```
+
+The next instance's `dueAt` is the completion date plus the recurrence interval, converted to the configured timezone.
 
 ### List Recurring Templates
 
