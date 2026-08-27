@@ -3,7 +3,10 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Core.Tasks;
 
-public sealed record CompleteRecurringTaskResult(RecurringTaskInstance CompletedInstance, RecurringTaskInstance NextInstance);
+public sealed record CompleteRecurringTaskResult(
+    RecurringTaskInstance CompletedInstance,
+    RecurringTaskInstance NextInstance
+);
 
 public sealed record CompleteRecurringTaskCommand(long Id) : ICommand<CompleteRecurringTaskResult>;
 

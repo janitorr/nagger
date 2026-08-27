@@ -107,10 +107,7 @@ public sealed record RecurringCreationResponse(
 )
 {
     public static RecurringCreationResponse From(CreateRecurringTaskResult result) =>
-        new(
-            RecurringTemplateResponse.From(result.Template),
-            RecurringTaskInstanceResponse.From(result.FirstInstance)
-        );
+        new(RecurringTemplateResponse.From(result.Template), RecurringTaskInstanceResponse.From(result.FirstInstance));
 }
 
 public sealed record RecurringCompletionResponse(
