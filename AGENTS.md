@@ -12,6 +12,11 @@
 - Name new or modified tests `Subject_GivenCondition_WhenAction_ThenOutcome`. The action describes the domain operation, such as `WhenCompleteRequested`, rather than generic transport wording such as `WhenPosted`. Do not rename existing tests solely to apply this convention.
 - Run Core mutation testing with `dotnet stryker` (config: `stryker-config.json`, mutates `Nagger.Core` against the Core tests). The run fails when the mutation score drops below 75% (`break` threshold); treat 80% (`high`) as the target. When adding or modifying feature code, run mutation testing and add tests for any newly surviving mutants.
 
+## Formatting
+
+- Code is formatted with CSharpier (120-column, see `.csharpierrc`). Run `dotnet csharpier format .` before committing any C# change.
+- A `pre-commit` hook (enabled via `git config core.hooksPath .githooks`) runs `dotnet csharpier check .` and blocks commits with unformatted C#. Do not commit with `--no-verify` to bypass it; the CI build fails on unformatted code.
+
 ## Boundaries
 
 - `src/Nagger.Core` owns task behavior and vertical feature slices in `Tasks/`. It must not reference ASP.NET Core, EF Core/SQLite, runtime configuration, or the system clock; add required dependencies as ports in `Ports.cs` and exercise them in Core tests.
