@@ -15,6 +15,7 @@ MCP-compatible clients can connect with the streamable-HTTP transport at
 `http://localhost:5246/mcp` when using the development launch profile. The
 endpoint exposes these tools:
 
+
 | Tool | Purpose |
 | --- | --- |
 | `create_one_shot_task` | Create a one-shot reminder from `title` and `dueAt`. |
