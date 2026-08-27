@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+set -e
+
+# Block commits with unformatted C# so formatting failures never reach CI.
+if ! command -v dotnet >/dev/null 2>&1; then
+    echo "pre-commit: dotnet not found; skipping formatting check." >&2
+    exit 0
+fi
+
+if ! dotnet csharpier check .; then
+    echo >&2
+    echo "pre-commit: formatting check failed." >&2
+    echo "pre-commit: run 'dotnet csharpier format .' and re-stage the changed files." >&2
+    exit 1
+fi

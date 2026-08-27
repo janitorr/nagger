@@ -68,6 +68,12 @@ CI enforces formatting with `dotnet csharpier check .`; run it locally to verify
 dotnet csharpier check .
 ```
 
+A `pre-commit` hook runs the same check so unformatted code never reaches CI. Enable it once with:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 Mechanical reformat commits are listed in `.git-blame-ignore-revs` so they do not pollute `git blame`.
 
 ## Mutation Testing
