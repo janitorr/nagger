@@ -441,14 +441,23 @@ public sealed class ApiTests
         );
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        template.RootElement.GetProperty("id").GetInt64().ShouldBe(1);
-        template.RootElement.GetProperty("title").GetString().ShouldBe("Team sync");
-        template.RootElement.GetProperty("startDate").GetString().ShouldBe(startDate);
-        template.RootElement.GetProperty("recurrence").GetProperty("every").GetInt32().ShouldBe(1);
-        template.RootElement.GetProperty("recurrence").GetProperty("unit").GetString().ShouldBe("weeks");
-        template.RootElement.GetProperty("status").GetString().ShouldBe("active");
-        template.RootElement.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var template = body.RootElement.GetProperty("template");
+        template.GetProperty("id").GetInt64().ShouldBe(1);
+        template.GetProperty("title").GetString().ShouldBe("Team sync");
+        template.GetProperty("startDate").GetString().ShouldBe(startDate);
+        template.GetProperty("recurrence").GetProperty("every").GetInt32().ShouldBe(1);
+        template.GetProperty("recurrence").GetProperty("unit").GetString().ShouldBe("weeks");
+        template.GetProperty("status").GetString().ShouldBe("active");
+        template.GetProperty("cancelledAt").ValueKind.ShouldBe(JsonValueKind.Null);
+
+        var firstInstance = body.RootElement.GetProperty("firstInstance");
+        firstInstance.GetProperty("id").GetInt64().ShouldBe(1);
+        firstInstance.GetProperty("title").GetString().ShouldBe("Team sync");
+        firstInstance.GetProperty("type").GetString().ShouldBe("recurring");
+        firstInstance.GetProperty("status").GetString().ShouldBe("active");
+        firstInstance.GetProperty("recurringTaskId").GetInt64().ShouldBe(1);
+        firstInstance.GetProperty("dueAt").GetString().ShouldBe($"{startDate}T00:00:00+03:00");
 
         using var tasks = JsonDocument.Parse(await client.GetStringAsync("/tasks/one-shot"));
         tasks.RootElement.GetArrayLength().ShouldBe(0);
@@ -522,11 +531,18 @@ public sealed class ApiTests
         var response = await client.PostAsync($"/tasks/recurring/{templateId}/complete", null);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var completed = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        completed.RootElement.GetProperty("status").GetString().ShouldBe("done");
-        completed.RootElement.GetProperty("type").GetString().ShouldBe("recurring");
-        completed.RootElement.GetProperty("recurringTaskId").GetInt64().ShouldBe(templateId);
-        completed.RootElement.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var completed = body.RootElement.GetProperty("completedInstance");
+        completed.GetProperty("status").GetString().ShouldBe("done");
+        completed.GetProperty("type").GetString().ShouldBe("recurring");
+        completed.GetProperty("recurringTaskId").GetInt64().ShouldBe(templateId);
+        completed.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+
+        var next = body.RootElement.GetProperty("nextInstance");
+        next.GetProperty("status").GetString().ShouldBe("active");
+        next.GetProperty("type").GetString().ShouldBe("recurring");
+        next.GetProperty("recurringTaskId").GetInt64().ShouldBe(templateId);
+        next.GetProperty("title").GetString().ShouldBe("Team sync");
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
@@ -639,8 +655,8 @@ public sealed class ApiTests
                 recurrence = new { every = 1, unit = "weeks" },
             }
         );
-        using var template = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        return template.RootElement.GetProperty("id").GetInt64();
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return body.RootElement.GetProperty("template").GetProperty("id").GetInt64();
     }
 
     private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");

@@ -45,19 +45,20 @@ public sealed class RecurringTaskFeatureTests
         var instanceStore = new MemoryRecurringTaskInstanceStore();
         var templateStore = new MemoryRecurringTemplateStore();
         var handler = new CreateRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
-        var template = await handler.Handle(
+        var result = await handler.Handle(
             new("Team sync", "2026-08-04", new RecurrenceRuleInput(1, "weeks")),
             default
         );
-        template.Id.ShouldBe(1);
-        template.Title.ShouldBe("Team sync");
-        template.Status.ShouldBe(RecurringTaskStatus.Active);
-        template.Recurrence.ShouldBe(new RecurrenceRule(1, RecurrenceUnit.Weeks));
-        var instance = instanceStore.Instances.ShouldHaveSingleItem();
+        result.Template.Id.ShouldBe(1);
+        result.Template.Title.ShouldBe("Team sync");
+        result.Template.Status.ShouldBe(RecurringTaskStatus.Active);
+        result.Template.Recurrence.ShouldBe(new RecurrenceRule(1, RecurrenceUnit.Weeks));
+        var instance = result.FirstInstance;
+        instance.ShouldBeSameAs(instanceStore.Instances.ShouldHaveSingleItem());
         instance.Title.ShouldBe("Team sync");
         instance.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 4, 0, 0, 0, TimeSpan.Zero));
         instance.Status.ShouldBe(RecurringTaskInstanceStatus.Active);
-        instance.RecurringTaskId.ShouldBe(template.Id);
+        instance.RecurringTaskId.ShouldBe(result.Template.Id);
     }
 
     [Theory]
@@ -99,8 +100,8 @@ public sealed class RecurringTaskFeatureTests
             instanceStore,
             new TestTimeProvider()
         );
-        var template = await handler.Handle(new("Team sync", "2026-08-04", new RecurrenceRuleInput(2, unit)), default);
-        template.Recurrence.Unit.ToContractValue().ShouldBe(unit);
+        var result = await handler.Handle(new("Team sync", "2026-08-04", new RecurrenceRuleInput(2, unit)), default);
+        result.Template.Recurrence.Unit.ToContractValue().ShouldBe(unit);
         instanceStore.Instances.ShouldHaveSingleItem();
     }
 
@@ -112,11 +113,11 @@ public sealed class RecurringTaskFeatureTests
             new MemoryRecurringTaskInstanceStore(),
             new TestTimeProvider()
         );
-        var template = await handler.Handle(
+        var result = await handler.Handle(
             new("Team sync", "2026-08-03", new RecurrenceRuleInput(1, "weeks")),
             default
         );
-        template.StartDate.ShouldBe(new DateOnly(2026, 8, 3));
+        result.Template.StartDate.ShouldBe(new DateOnly(2026, 8, 3));
     }
 
     [Fact]
@@ -158,15 +159,15 @@ public sealed class RecurringTaskFeatureTests
             )
         );
         var handler = new CompleteRecurringTaskHandler(templateStore, instanceStore, new TestTimeProvider());
-        var completed = await handler.Handle(new(1), default);
-        completed.Status.ShouldBe(RecurringTaskInstanceStatus.Done);
-        completed.CompletedAt.ShouldNotBeNull();
-        completed.RecurringTaskId.ShouldBe(1);
+        var result = await handler.Handle(new(1), default);
+        result.CompletedInstance.Status.ShouldBe(RecurringTaskInstanceStatus.Done);
+        result.CompletedInstance.CompletedAt.ShouldNotBeNull();
+        result.CompletedInstance.RecurringTaskId.ShouldBe(1);
         instanceStore.Instances.Count.ShouldBe(2);
-        var next = instanceStore.Instances.Single(x => x.Status == RecurringTaskInstanceStatus.Active);
-        next.Title.ShouldBe("Team sync");
-        next.RecurringTaskId.ShouldBe(1);
-        next.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 10, 0, 0, 0, TimeSpan.Zero));
+        result.NextInstance.ShouldBeSameAs(instanceStore.Instances.Single(x => x.Status == RecurringTaskInstanceStatus.Active));
+        result.NextInstance.Title.ShouldBe("Team sync");
+        result.NextInstance.RecurringTaskId.ShouldBe(1);
+        result.NextInstance.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 10, 0, 0, 0, TimeSpan.Zero));
     }
 
     [Fact]
@@ -419,8 +420,8 @@ public sealed class RecurringTaskFeatureTests
             instanceStore,
             new TestTimeProvider(now, helsinki)
         );
-        var completed = await handler.Handle(new(1), default);
-        completed.Status.ShouldBe(RecurringTaskInstanceStatus.Done);
+        var result = await handler.Handle(new(1), default);
+        result.CompletedInstance.Status.ShouldBe(RecurringTaskInstanceStatus.Done);
         var next = instanceStore.Instances.Single(x => x.Status == RecurringTaskInstanceStatus.Active);
         next.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 11, 0, 0, 0, TimeSpan.FromHours(3)));
     }

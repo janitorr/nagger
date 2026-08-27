@@ -440,13 +440,21 @@ public sealed class McpTests
                 },
             }
         );
-        var template = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+        var template = structuredContent.GetProperty("template");
 
         template.GetProperty("id").GetInt64().ShouldBe(1);
         template.GetProperty("status").GetString().ShouldBe("active");
         template.GetProperty("startDate").GetString().ShouldBe(startDate);
         template.GetProperty("recurrence").GetProperty("every").GetInt32().ShouldBe(1);
         template.GetProperty("recurrence").GetProperty("unit").GetString().ShouldBe("weeks");
+
+        var firstInstance = structuredContent.GetProperty("firstInstance");
+        firstInstance.GetProperty("id").GetInt64().ShouldBe(1);
+        firstInstance.GetProperty("status").GetString().ShouldBe("active");
+        firstInstance.GetProperty("type").GetString().ShouldBe("recurring");
+        firstInstance.GetProperty("recurringTaskId").GetInt64().ShouldBe(1);
+        firstInstance.GetProperty("dueAt").GetString().ShouldBe($"{startDate}T00:00:00+03:00");
     }
 
     [Fact]
@@ -464,12 +472,19 @@ public sealed class McpTests
             "tools/call",
             new { name = "complete_recurring_task", arguments = new { id = templateId } }
         );
-        var task = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+        var completed = structuredContent.GetProperty("completedInstance");
 
-        task.GetProperty("status").GetString().ShouldBe("done");
-        task.GetProperty("type").GetString().ShouldBe("recurring");
-        task.GetProperty("recurringTaskId").GetInt64().ShouldBe(templateId);
-        task.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        completed.GetProperty("status").GetString().ShouldBe("done");
+        completed.GetProperty("type").GetString().ShouldBe("recurring");
+        completed.GetProperty("recurringTaskId").GetInt64().ShouldBe(templateId);
+        completed.GetProperty("completedAt").ValueKind.ShouldNotBe(JsonValueKind.Null);
+
+        var next = structuredContent.GetProperty("nextInstance");
+        next.GetProperty("status").GetString().ShouldBe("active");
+        next.GetProperty("type").GetString().ShouldBe("recurring");
+        next.GetProperty("recurringTaskId").GetInt64().ShouldBe(templateId);
+        next.GetProperty("title").GetString().ShouldBe("Team sync");
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
@@ -667,7 +682,12 @@ public sealed class McpTests
                 },
             }
         );
-        return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
+        return response
+            .RootElement.GetProperty("result")
+            .GetProperty("structuredContent")
+            .GetProperty("template")
+            .GetProperty("id")
+            .GetInt64();
     }
 
     private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");

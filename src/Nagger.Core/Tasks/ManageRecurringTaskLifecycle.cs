@@ -3,7 +3,9 @@ using Nagger.Core.Tasks.Domain;
 
 namespace Nagger.Core.Tasks;
 
-public sealed record CompleteRecurringTaskCommand(long Id) : ICommand<RecurringTaskInstance>;
+public sealed record CompleteRecurringTaskResult(RecurringTaskInstance CompletedInstance, RecurringTaskInstance NextInstance);
+
+public sealed record CompleteRecurringTaskCommand(long Id) : ICommand<CompleteRecurringTaskResult>;
 
 public sealed record PauseRecurringTaskCommand(long Id) : ICommand<RecurringTaskTemplate>;
 
@@ -15,9 +17,9 @@ public sealed class CompleteRecurringTaskHandler(
     IRecurringTaskTemplateStore recurringStore,
     IRecurringTaskInstanceStore instanceStore,
     TimeProvider timeProvider
-) : ICommandHandler<CompleteRecurringTaskCommand, RecurringTaskInstance>
+) : ICommandHandler<CompleteRecurringTaskCommand, CompleteRecurringTaskResult>
 {
-    public async ValueTask<RecurringTaskInstance> Handle(
+    public async ValueTask<CompleteRecurringTaskResult> Handle(
         CompleteRecurringTaskCommand command,
         CancellationToken cancellationToken
     )
@@ -52,9 +54,9 @@ public sealed class CompleteRecurringTaskHandler(
             Status: RecurringTaskInstanceStatus.Active
         );
 
-        await instanceStore.AddAsync(nextInstance, cancellationToken);
+        var persistedNext = await instanceStore.AddAsync(nextInstance, cancellationToken);
 
-        return completed;
+        return new CompleteRecurringTaskResult(completed, persistedNext);
     }
 }
 

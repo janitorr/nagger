@@ -15,8 +15,11 @@ public static class RecurringTaskEndpoints
             "",
             async (CreateRecurringTaskCommand command, IMediator mediator, CancellationToken cancellationToken) =>
             {
-                var template = await mediator.Send(command, cancellationToken);
-                return Results.Created($"/tasks/recurring/{template.Id}", RecurringTemplateResponse.From(template));
+                var result = await mediator.Send(command, cancellationToken);
+                return Results.Created(
+                    $"/tasks/recurring/{result.Template.Id}",
+                    RecurringCreationResponse.From(result)
+                );
             }
         );
 
@@ -34,7 +37,7 @@ public static class RecurringTaskEndpoints
             "{id:long}/complete",
             async (long id, IMediator mediator, CancellationToken cancellationToken) =>
                 Results.Ok(
-                    RecurringTaskInstanceResponse.From(
+                    RecurringCompletionResponse.From(
                         await mediator.Send(new CompleteRecurringTaskCommand(id), cancellationToken)
                     )
                 )
@@ -97,6 +100,30 @@ public sealed record RecurringTemplateResponse(
 }
 
 public sealed record RecurrenceRuleResponse(int Every, string Unit);
+
+public sealed record RecurringCreationResponse(
+    RecurringTemplateResponse Template,
+    RecurringTaskInstanceResponse FirstInstance
+)
+{
+    public static RecurringCreationResponse From(CreateRecurringTaskResult result) =>
+        new(
+            RecurringTemplateResponse.From(result.Template),
+            RecurringTaskInstanceResponse.From(result.FirstInstance)
+        );
+}
+
+public sealed record RecurringCompletionResponse(
+    RecurringTaskInstanceResponse CompletedInstance,
+    RecurringTaskInstanceResponse NextInstance
+)
+{
+    public static RecurringCompletionResponse From(CompleteRecurringTaskResult result) =>
+        new(
+            RecurringTaskInstanceResponse.From(result.CompletedInstance),
+            RecurringTaskInstanceResponse.From(result.NextInstance)
+        );
+}
 
 public sealed record RecurringTaskInstanceResponse(
     long Id,
