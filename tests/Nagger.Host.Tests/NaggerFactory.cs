@@ -9,7 +9,7 @@ namespace Nagger.Host.Tests;
 
 public sealed class NaggerFactory : WebApplicationFactory<Program>
 {
-    private static readonly DateTimeOffset ScenarioNow = new(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
+    internal static readonly DateTimeOffset ScenarioNow = new(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"nagger-{Guid.NewGuid():N}.db");
     private readonly Action<IServiceCollection>? _configureServices;
 
