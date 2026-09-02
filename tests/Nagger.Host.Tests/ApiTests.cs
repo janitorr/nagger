@@ -663,7 +663,7 @@ public sealed class ApiTests
         return body.RootElement.GetProperty("template").GetProperty("id").GetInt64();
     }
 
-    private static string FutureStartDate() => DateTime.UtcNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+    private static string FutureStartDate() => NaggerFactory.ScenarioNow.Date.AddDays(7).ToString("yyyy-MM-dd");
 }
 
 public sealed class ThrowingStore : ITaskStore
