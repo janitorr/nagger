@@ -29,4 +29,4 @@
 ## 8. Final verification
 
 - [x] 8.1 Run `dotnet build Nagger.slnx` and `dotnet test Nagger.slnx` and confirm the full solution builds and all tests pass
-- [ ] 8.2 Run `dotnet csharpier format .` and confirm no unformatted files
+- [x] 8.2 Run `dotnet csharpier format .` and confirm no unformatted files
