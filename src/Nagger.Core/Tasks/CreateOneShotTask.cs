@@ -13,9 +13,9 @@ public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt) : IC
             errors["title"] = ["Title is required."];
 
         var dueAt = default(DateTimeOffset);
-        if (
-            DueAt is null
-            || !DateTimeOffset.TryParseExact(
+        var parsed =
+            DueAt is not null
+            && DateTimeOffset.TryParseExact(
                 DueAt,
                 [
                     "yyyy-MM-dd'T'HH:mm:sszzz",
@@ -26,11 +26,11 @@ public sealed record CreateOneShotTaskCommand(string? Title, string? DueAt) : IC
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal,
                 out dueAt
-            )
-        )
+            );
+        if (!parsed)
             errors["dueAt"] = ["Due timestamp must be an ISO-8601 value with an explicit UTC offset."];
 
-        if (dueAt != default && dueAt < now)
+        if (parsed && dueAt < now)
             errors["dueAt"] = ["Due timestamp cannot be in the past."];
 
         if (errors.Count > 0)
