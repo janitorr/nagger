@@ -285,6 +285,10 @@ public sealed class ApiTests
         var response = await client.PostAsync("/tasks/42/complete", null);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        body.RootElement.GetProperty("status").GetInt32().ShouldBe(404);
+        body.RootElement.TryGetProperty("title", out _).ShouldBeTrue();
     }
 
     [Fact]

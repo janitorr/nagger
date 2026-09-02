@@ -20,15 +20,9 @@ public sealed class ApiExceptionHandler : IExceptionHandler
             return true;
         }
 
-        if (exception is TaskNotFoundException)
+        if (exception is TaskNotFoundException or RecurringTaskNotFoundException)
         {
-            httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            return true;
-        }
-
-        if (exception is RecurringTaskNotFoundException)
-        {
-            httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            await Results.Problem(statusCode: StatusCodes.Status404NotFound).ExecuteAsync(httpContext);
             return true;
         }
 
