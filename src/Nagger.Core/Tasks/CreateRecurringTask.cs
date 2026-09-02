@@ -16,16 +16,16 @@ public sealed record CreateRecurringTaskCommand(string? Title, string? StartDate
             errors["title"] = ["Title is required."];
 
         var startDate = default(DateOnly);
-        if (
-            StartDate is null
-            || !DateOnly.TryParseExact(
+        var parsed =
+            StartDate is not null
+            && DateOnly.TryParseExact(
                 StartDate,
                 "yyyy-MM-dd",
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
                 out startDate
-            )
-        )
+            );
+        if (!parsed)
             errors["startDate"] = ["Start date must be in YYYY-MM-DD format."];
 
         var every = Recurrence?.Every;
@@ -36,7 +36,7 @@ public sealed record CreateRecurringTaskCommand(string? Title, string? StartDate
         if (!RecurrenceUnits.TryParse(Recurrence?.Unit, out unit))
             errors["recurrence.unit"] = ["Recurrence unit must be days, weeks, or months."];
 
-        if (startDate != default && startDate < today)
+        if (parsed && startDate < today)
             errors["startDate"] = ["Start date cannot be in the past."];
 
         if (errors.Count > 0)
