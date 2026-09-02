@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nagger.Host.Infrastructure;
 
@@ -10,9 +11,11 @@ using Nagger.Host.Infrastructure;
 namespace Nagger.Host.Infrastructure.Migrations
 {
     [DbContext(typeof(NaggerDbContext))]
-    partial class NaggerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902201140_AddRecurringInstanceForeignKey")]
+    partial class AddRecurringInstanceForeignKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
