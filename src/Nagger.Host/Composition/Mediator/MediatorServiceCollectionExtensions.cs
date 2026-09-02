@@ -13,6 +13,7 @@ public static class MediatorServiceCollectionExtensions
             options.ServiceLifetime = ServiceLifetime.Scoped;
             options.Assemblies = [typeof(TaskItem)];
         });
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>));
         services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(DispatchLoggingBehavior<,>));
         return services;
     }
