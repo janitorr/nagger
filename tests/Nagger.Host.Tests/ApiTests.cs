@@ -648,6 +648,62 @@ public sealed class ApiTests
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task CreateRecurringTask_GivenInstanceStoreFailsOnCreateSave_WhenCreateRequested_ThenNoTemplateRowSurvives()
+    {
+        using var factory = new NaggerFactory(services =>
+        {
+            services.RemoveAll<IRecurringTaskInstanceStore>();
+            services.AddScoped<IRecurringTaskInstanceStore>(sp => new FailingRecurringTaskInstanceStore(
+                new SqliteRecurringTaskInstanceStore(sp.GetRequiredService<NaggerDbContext>()),
+                failOnWrite: 1
+            ));
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/tasks/recurring",
+            new
+            {
+                title = "Team sync",
+                startDate = FutureStartDate(),
+                recurrence = new { every = 1, unit = "weeks" },
+            }
+        );
+
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
+        (await db.RecurringTaskTemplates.CountAsync()).ShouldBe(0);
+        (await db.RecurringTaskInstances.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task CompleteRecurringTask_GivenNextInstanceSchedulingFails_WhenCompleteRequested_ThenCompletionRollsBack()
+    {
+        using var factory = new NaggerFactory(services =>
+        {
+            services.RemoveAll<IRecurringTaskInstanceStore>();
+            services.AddScoped<IRecurringTaskInstanceStore>(sp => new FailingRecurringTaskInstanceStore(
+                new SqliteRecurringTaskInstanceStore(sp.GetRequiredService<NaggerDbContext>()),
+                failOnWrite: 2
+            ));
+        });
+        using var client = factory.CreateClient();
+        var templateId = await CreateRecurringTemplateAsync(client);
+
+        var response = await client.PostAsync($"/tasks/recurring/{templateId}/complete", null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NaggerDbContext>();
+        (await db.RecurringTaskTemplates.CountAsync()).ShouldBe(1);
+        var instances = await db.RecurringTaskInstances.ToListAsync();
+        instances.ShouldHaveSingleItem();
+        instances.Single().Status.ShouldBe("active");
+        instances.Single().CompletedAt.ShouldBeNull();
+    }
+
     private static async Task<long> CreateRecurringTemplateAsync(HttpClient client, string title = "Team sync")
     {
         using var response = await client.PostAsJsonAsync(
@@ -664,6 +720,42 @@ public sealed class ApiTests
     }
 
     private static string FutureStartDate() => NaggerFactory.ScenarioNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+}
+
+public sealed class FailingRecurringTaskInstanceStore(IRecurringTaskInstanceStore inner, int failOnWrite)
+    : IRecurringTaskInstanceStore
+{
+    private int _writes;
+
+    public ValueTask<RecurringTaskInstance> AddAsync(
+        RecurringTaskInstance instance,
+        CancellationToken cancellationToken
+    )
+    {
+        _writes++;
+        if (_writes == failOnWrite)
+            throw new InvalidOperationException("storage failure");
+        return inner.AddAsync(instance, cancellationToken);
+    }
+
+    public ValueTask<RecurringTaskInstance?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
+        inner.GetByIdAsync(id, cancellationToken);
+
+    public ValueTask UpdateAsync(RecurringTaskInstance instance, CancellationToken cancellationToken)
+    {
+        _writes++;
+        if (_writes == failOnWrite)
+            throw new InvalidOperationException("storage failure");
+        return inner.UpdateAsync(instance, cancellationToken);
+    }
+
+    public ValueTask<IReadOnlyList<RecurringTaskInstance>> GetActiveAsync(CancellationToken cancellationToken) =>
+        inner.GetActiveAsync(cancellationToken);
+
+    public ValueTask<IReadOnlyList<RecurringTaskInstance>> GetByTemplateIdAsync(
+        long recurringTaskId,
+        CancellationToken cancellationToken
+    ) => inner.GetByTemplateIdAsync(recurringTaskId, cancellationToken);
 }
 
 public sealed class ThrowingStore : ITaskStore
