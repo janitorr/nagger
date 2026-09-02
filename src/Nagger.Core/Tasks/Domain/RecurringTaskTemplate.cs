@@ -84,6 +84,15 @@ public static class RecurrenceUnits
             _ => throw new ArgumentOutOfRangeException(nameof(unit)),
         };
 
+    public static RecurrenceUnit FromContractValue(string unit) =>
+        unit switch
+        {
+            "days" => RecurrenceUnit.Days,
+            "weeks" => RecurrenceUnit.Weeks,
+            "months" => RecurrenceUnit.Months,
+            _ => throw new ArgumentOutOfRangeException(nameof(unit)),
+        };
+
     public static bool TryParse(string? value, out RecurrenceUnit unit)
     {
         switch (value)
