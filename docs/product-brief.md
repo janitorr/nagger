@@ -1,7 +1,7 @@
 ---
 title: Nagger Product Brief
 created: 2026-08-02
-updated: 2026-08-22
+updated: 2026-09-02
 tags:
   - type/product-brief
   - project/hermes
@@ -308,7 +308,7 @@ MCP-compatible clients connect through streamable HTTP at `/mcp`. The server exp
 
 ### Planned interfaces
 
-Task editing/listing, reminder-emission recording, and shopping endpoints remain planned. They are not part of the current public contract.
+Task editing and shopping endpoints remain planned. They are not part of the current public contract.
 
 ## Morning Digest JSON shape
 
@@ -323,7 +323,7 @@ Report contract rules:
 
 ```json
 {
-  "schemaVersion": "2",
+  "schemaVersion": "4",
   "generatedAt": "2026-08-03T07:00:00+03:00",
   "date": "2026-08-03",
   "summary": {
@@ -336,6 +336,7 @@ Report contract rules:
       "id": 42,
       "title": "Renew passport",
       "dueAt": "2026-08-01T09:00:00+03:00",
+      "type": "one-shot",
       "dueState": "overdue",
       "daysOverdue": 2,
       "daysUntilDue": null
