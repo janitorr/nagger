@@ -84,19 +84,23 @@ public static class RecurrenceUnits
             _ => throw new ArgumentOutOfRangeException(nameof(unit)),
         };
 
-    public static bool TryParse(string? value, out RecurrenceUnit unit) =>
-        value switch
-        {
-            "days" => Set(RecurrenceUnit.Days, out unit),
-            "weeks" => Set(RecurrenceUnit.Weeks, out unit),
-            "months" => Set(RecurrenceUnit.Months, out unit),
-            _ => Set(default, out unit, false),
-        };
-
-    private static bool Set(RecurrenceUnit value, out RecurrenceUnit unit, bool success = true)
+    public static bool TryParse(string? value, out RecurrenceUnit unit)
     {
-        unit = value;
-        return success;
+        switch (value)
+        {
+            case "days":
+                unit = RecurrenceUnit.Days;
+                return true;
+            case "weeks":
+                unit = RecurrenceUnit.Weeks;
+                return true;
+            case "months":
+                unit = RecurrenceUnit.Months;
+                return true;
+            default:
+                unit = default;
+                return false;
+        }
     }
 }
 
