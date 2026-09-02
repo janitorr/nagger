@@ -355,6 +355,24 @@ public sealed class RecurringTaskFeatureTests
         unit.ShouldBe(default);
     }
 
+    [Theory]
+    [InlineData("days", RecurrenceUnit.Days)]
+    [InlineData("weeks", RecurrenceUnit.Weeks)]
+    [InlineData("months", RecurrenceUnit.Months)]
+    public void RecurrenceUnits_GivenValidContractValue_WhenConverted_ThenReturnsUnit(
+        string value,
+        RecurrenceUnit expected
+    )
+    {
+        RecurrenceUnits.FromContractValue(value).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void RecurrenceUnits_GivenInvalidContractValue_WhenConverted_ThenThrows()
+    {
+        Should.Throw<ArgumentOutOfRangeException>(() => RecurrenceUnits.FromContractValue("hourly"));
+    }
+
     [Fact]
     public void RecurringTaskInstanceStatuses_GivenContractValue_WhenParsed_ThenReturnsStatus()
     {
@@ -422,6 +440,37 @@ public sealed class RecurringTaskFeatureTests
         next.DueAt.ShouldBe(new DateTimeOffset(2026, 8, 11, 0, 0, 0, TimeSpan.FromHours(3)));
     }
 
+    [Fact]
+    public async Task CompleteRecurringTask_GivenAdvancingClock_WhenCompleteRequested_ThenEveryTimestampUsesOneInstant()
+    {
+        var instanceStore = new MemoryRecurringTaskInstanceStore(
+            new RecurringTaskInstance(
+                1,
+                1,
+                "Team sync",
+                new DateTimeOffset(2026, 8, 4, 9, 0, 0, TimeSpan.FromHours(3)),
+                default,
+                default
+            )
+        );
+        var templateStore = new MemoryRecurringTemplateStore(
+            new RecurringTaskTemplate(
+                1,
+                "Team sync",
+                new DateOnly(2026, 8, 4),
+                new RecurrenceRule(1, RecurrenceUnit.Weeks),
+                RecurringTaskStatus.Active,
+                default,
+                default
+            )
+        );
+        var handler = new CompleteRecurringTaskHandler(templateStore, instanceStore, new AdvancingTimeProvider());
+        var result = await handler.Handle(new(1), default);
+        result.CompletedInstance.CompletedAt.ShouldBe(result.CompletedInstance.UpdatedAt);
+        result.NextInstance.CreatedAt.ShouldBe(result.NextInstance.UpdatedAt);
+        result.CompletedInstance.UpdatedAt.ShouldBe(result.NextInstance.CreatedAt);
+    }
+
     private static RecurringTaskTemplate Template(
         long Id = 1,
         string title = "Team sync",
@@ -434,6 +483,14 @@ public sealed class RecurringTaskFeatureTests
         public override DateTimeOffset GetUtcNow() => utcNow ?? new DateTimeOffset(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
 
         public override TimeZoneInfo LocalTimeZone => timeZone ?? TimeZoneInfo.Utc;
+    }
+
+    private sealed class AdvancingTimeProvider : TimeProvider
+    {
+        private int _calls;
+        private DateTimeOffset _current = new(2026, 8, 3, 6, 0, 0, TimeSpan.Zero);
+
+        public override DateTimeOffset GetUtcNow() => _current.AddMinutes(_calls++);
     }
 
     private sealed class MemoryStore(params TaskItem[] tasks) : ITaskStore

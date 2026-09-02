@@ -31,6 +31,8 @@ public sealed class CompleteRecurringTaskHandler(
             await recurringStore.GetByIdAsync(command.Id, cancellationToken)
             ?? throw new RecurringTaskNotFoundException(command.Id);
 
+        var now = timeProvider.GetUtcNow();
+
         var instances = await instanceStore.GetByTemplateIdAsync(command.Id, cancellationToken);
         var current = instances.FirstOrDefault(x => x.Status == RecurringTaskInstanceStatus.Active);
         if (current is null)
@@ -38,7 +40,7 @@ public sealed class CompleteRecurringTaskHandler(
                 new Dictionary<string, string[]> { ["status"] = ["Recurring task has no active instance to complete."] }
             );
 
-        var completed = current.Complete(timeProvider.GetUtcNow());
+        var completed = current.Complete(now);
         await instanceStore.UpdateAsync(completed, cancellationToken);
 
         var completedLocal = TimeZoneInfo.ConvertTime(completed.CompletedAt!.Value, timeProvider.LocalTimeZone);
@@ -52,8 +54,8 @@ public sealed class CompleteRecurringTaskHandler(
             RecurringTaskId: template.Id,
             Title: template.Title,
             DueAt: nextDueDate.ToDateTimeOffset(timeProvider.LocalTimeZone),
-            CreatedAt: timeProvider.GetUtcNow(),
-            UpdatedAt: timeProvider.GetUtcNow(),
+            CreatedAt: now,
+            UpdatedAt: now,
             Status: RecurringTaskInstanceStatus.Active
         );
 
@@ -78,13 +80,15 @@ public sealed class PauseRecurringTaskHandler(
             await recurringStore.GetByIdAsync(command.Id, cancellationToken)
             ?? throw new RecurringTaskNotFoundException(command.Id);
 
-        var updated = template.Pause(timeProvider.GetUtcNow());
+        var now = timeProvider.GetUtcNow();
+
+        var updated = template.Pause(now);
         await recurringStore.UpdateAsync(updated, cancellationToken);
 
         var instances = await instanceStore.GetByTemplateIdAsync(command.Id, cancellationToken);
         var current = instances.FirstOrDefault(x => x.Status == RecurringTaskInstanceStatus.Active);
         if (current is not null)
-            await instanceStore.UpdateAsync(current.Pause(timeProvider.GetUtcNow()), cancellationToken);
+            await instanceStore.UpdateAsync(current.Pause(now), cancellationToken);
 
         return updated;
     }
@@ -105,13 +109,15 @@ public sealed class ResumeRecurringTaskHandler(
             await recurringStore.GetByIdAsync(command.Id, cancellationToken)
             ?? throw new RecurringTaskNotFoundException(command.Id);
 
-        var updated = template.Resume(timeProvider.GetUtcNow());
+        var now = timeProvider.GetUtcNow();
+
+        var updated = template.Resume(now);
         await recurringStore.UpdateAsync(updated, cancellationToken);
 
         var instances = await instanceStore.GetByTemplateIdAsync(command.Id, cancellationToken);
         var current = instances.FirstOrDefault(x => x.Status == RecurringTaskInstanceStatus.Paused);
         if (current is not null)
-            await instanceStore.UpdateAsync(current.Resume(timeProvider.GetUtcNow()), cancellationToken);
+            await instanceStore.UpdateAsync(current.Resume(now), cancellationToken);
 
         return updated;
     }
@@ -132,7 +138,9 @@ public sealed class CancelRecurringTaskHandler(
             await recurringStore.GetByIdAsync(command.Id, cancellationToken)
             ?? throw new RecurringTaskNotFoundException(command.Id);
 
-        var updated = template.Cancel(timeProvider.GetUtcNow());
+        var now = timeProvider.GetUtcNow();
+
+        var updated = template.Cancel(now);
         await recurringStore.UpdateAsync(updated, cancellationToken);
 
         var instances = await instanceStore.GetByTemplateIdAsync(command.Id, cancellationToken);
@@ -141,7 +149,7 @@ public sealed class CancelRecurringTaskHandler(
                 x.Status is RecurringTaskInstanceStatus.Active or RecurringTaskInstanceStatus.Paused
             )
         )
-            await instanceStore.UpdateAsync(instance.Cancel(timeProvider.GetUtcNow()), cancellationToken);
+            await instanceStore.UpdateAsync(instance.Cancel(now), cancellationToken);
 
         return updated;
     }
