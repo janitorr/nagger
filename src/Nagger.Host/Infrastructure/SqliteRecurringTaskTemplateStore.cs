@@ -16,7 +16,7 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
             Title = recurringTemplate.Title,
             StartDate = recurringTemplate.StartDate,
             RecurrenceEvery = recurringTemplate.Recurrence.Every,
-            RecurrenceUnit = recurringTemplate.Recurrence.Unit.ToString(),
+            RecurrenceUnit = recurringTemplate.Recurrence.Unit.ToContractValue(),
             Status = recurringTemplate.Status.ToContractValue(),
             CreatedAt = recurringTemplate.CreatedAt,
             UpdatedAt = recurringTemplate.UpdatedAt,
@@ -58,7 +58,7 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
         entity.Title = recurringTemplate.Title;
         entity.StartDate = recurringTemplate.StartDate;
         entity.RecurrenceEvery = recurringTemplate.Recurrence.Every;
-        entity.RecurrenceUnit = recurringTemplate.Recurrence.Unit.ToString();
+        entity.RecurrenceUnit = recurringTemplate.Recurrence.Unit.ToContractValue();
         entity.Status = recurringTemplate.Status.ToContractValue();
         entity.UpdatedAt = recurringTemplate.UpdatedAt;
         entity.CancelledAt = recurringTemplate.CancelledAt;
@@ -83,7 +83,7 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
             StartDate: entity.StartDate,
             Recurrence: new RecurrenceRule(
                 Every: entity.RecurrenceEvery,
-                Unit: Enum.Parse<RecurrenceUnit>(entity.RecurrenceUnit)
+                Unit: RecurrenceUnits.FromContractValue(entity.RecurrenceUnit)
             ),
             Status: RecurringTaskStatuses.FromContractValue(entity.Status),
             CreatedAt: entity.CreatedAt,
