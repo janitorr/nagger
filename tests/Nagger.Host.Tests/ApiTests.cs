@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -719,7 +720,8 @@ public sealed class ApiTests
         return body.RootElement.GetProperty("template").GetProperty("id").GetInt64();
     }
 
-    private static string FutureStartDate() => NaggerFactory.ScenarioNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+    private static string FutureStartDate() =>
+        NaggerFactory.ScenarioNow.Date.AddDays(7).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 }
 
 public sealed class FailingRecurringTaskInstanceStore(IRecurringTaskInstanceStore inner, int failOnWrite)

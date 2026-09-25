@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -690,7 +691,8 @@ public sealed class McpTests
             .GetInt64();
     }
 
-    private static string FutureStartDate() => NaggerFactory.ScenarioNow.Date.AddDays(7).ToString("yyyy-MM-dd");
+    private static string FutureStartDate() =>
+        NaggerFactory.ScenarioNow.Date.AddDays(7).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static async Task<long> CreateTaskAsync(
         HttpClient client,

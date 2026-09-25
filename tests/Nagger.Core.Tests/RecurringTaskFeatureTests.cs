@@ -1,3 +1,4 @@
+using System.Globalization;
 using Nagger.Core.Tasks;
 using Nagger.Core.Tasks.Domain;
 using Shouldly;
@@ -19,7 +20,7 @@ public sealed class RecurringTaskFeatureTests
     {
         RecurrenceCalculator
             .CalculateNextDue(new DateOnly(2026, 8, 3), new RecurrenceRule(every, unit))
-            .ShouldBe(DateOnly.Parse(expected));
+            .ShouldBe(DateOnly.ParseExact(expected, "yyyy-MM-dd", CultureInfo.InvariantCulture));
     }
 
     [Theory]
@@ -35,8 +36,11 @@ public sealed class RecurringTaskFeatureTests
     )
     {
         RecurrenceCalculator
-            .CalculateNextDue(DateOnly.Parse(completionDate), new RecurrenceRule(months, RecurrenceUnit.Months))
-            .ShouldBe(DateOnly.Parse(expected));
+            .CalculateNextDue(
+                DateOnly.ParseExact(completionDate, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+                new RecurrenceRule(months, RecurrenceUnit.Months)
+            )
+            .ShouldBe(DateOnly.ParseExact(expected, "yyyy-MM-dd", CultureInfo.InvariantCulture));
     }
 
     [Fact]

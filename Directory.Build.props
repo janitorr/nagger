@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <!-- Escalate CA analyzer warnings to errors only; NU* (NuGet) and CS* (compiler) warnings stay warnings. -->
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>
