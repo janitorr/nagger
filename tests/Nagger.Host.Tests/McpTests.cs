@@ -644,6 +644,48 @@ public sealed class McpTests
     }
 
     [Fact]
+    public async Task Mcp_GivenActivePausedAndCancelledTemplates_WhenListRequested_ThenReturnsNextDueAtFromOpenInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await CreateRecurringTaskAsync(client, session, 2);
+        var pausedId = await CreateRecurringTaskAsync(client, session, 3);
+        var cancelledId = await CreateRecurringTaskAsync(client, session, 4);
+        using var paused = await SendMcpAsync(
+            client,
+            session,
+            5,
+            "tools/call",
+            new { name = "pause_recurring_task", arguments = new { id = pausedId } }
+        );
+        using var cancelled = await SendMcpAsync(
+            client,
+            session,
+            6,
+            "tools/call",
+            new { name = "cancel_recurring_task", arguments = new { id = cancelledId } }
+        );
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            7,
+            "tools/call",
+            new { name = "list_recurring_tasks", arguments = new { } }
+        );
+        var templates = response
+            .RootElement.GetProperty("result")
+            .GetProperty("structuredContent")
+            .GetProperty("tasks");
+
+        var expectedNextDue = $"{FutureStartDate()}T00:00:00+03:00";
+        templates[0].GetProperty("nextDueAt").GetString().ShouldBe(expectedNextDue);
+        templates[1].GetProperty("nextDueAt").GetString().ShouldBe(expectedNextDue);
+        templates[2].GetProperty("nextDueAt").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
     public async Task Mcp_GivenNoRecurringTemplates_WhenListRequested_ThenReturnsObjectWithEmptyTasksArray()
     {
         using var factory = new NaggerFactory();

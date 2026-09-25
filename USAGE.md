@@ -28,7 +28,7 @@ endpoint exposes these tools:
 | `pause_recurring_task` | Pause a recurring template and its current instance by template `id`. |
 | `resume_recurring_task` | Resume a paused recurring template and its current instance by template `id`. |
 | `cancel_recurring_task` | Cancel a recurring template and all its instances by template `id`. |
-| `list_recurring_tasks` | Discover recurring templates and their lifecycle-tool `id` values. |
+| `list_recurring_tasks` | Discover recurring templates, their next due date, and their lifecycle-tool `id` values. |
 | `get_morning_report` | Read the morning report for a `YYYY-MM-DD` `date`. |
 
 Tool results contain structured task and report data using the same fields as
@@ -160,7 +160,8 @@ Successful response: `201 Created`
     "status": "active",
     "createdAt": "2026-08-03T10:00:00+00:00",
     "updatedAt": "2026-08-03T10:00:00+00:00",
-    "cancelledAt": null
+    "cancelledAt": null,
+    "nextDueAt": "2026-08-06T00:00:00+03:00"
   },
   "firstInstance": {
     "id": 1,
@@ -230,6 +231,27 @@ The next instance's `dueAt` is the completion date plus the recurrence interval,
 `GET /tasks/recurring`
 
 Returns `200 OK` with an array of template representations ordered by ascending `id`; `[]` when none exist. Use the returned `id` as the template id for all recurring lifecycle actions (pause, resume, cancel, and complete).
+
+Each template includes `nextDueAt`, the due timestamp of its current open instance (the single `active` or `paused` instance), or `null` when the template has no open instance (cancelled). It reports the paused instance's due date for a paused template, so it matches the `dueAt` the create and complete responses expose under `firstInstance` and `nextInstance`.
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Team sync",
+    "startDate": "2026-08-06",
+    "recurrence": {
+      "every": 1,
+      "unit": "weeks"
+    },
+    "status": "active",
+    "createdAt": "2026-08-03T10:00:00+00:00",
+    "updatedAt": "2026-08-03T10:00:00+00:00",
+    "cancelledAt": null,
+    "nextDueAt": "2026-08-06T00:00:00+03:00"
+  }
+]
+```
 
 ```bash
 curl http://localhost:5246/tasks/recurring

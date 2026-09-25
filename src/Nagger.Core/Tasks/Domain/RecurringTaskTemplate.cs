@@ -12,6 +12,11 @@ public sealed record RecurringTaskTemplate(
     DateTimeOffset? CancelledAt = null
 )
 {
+    public RecurringTaskInstance? CurrentInstance =>
+        Instances.FirstOrDefault(x =>
+            x.Status is RecurringTaskInstanceStatus.Active or RecurringTaskInstanceStatus.Paused
+        );
+
     public RecurringTaskTemplate Pause(DateTimeOffset now)
     {
         if (Status != RecurringTaskStatus.Active)

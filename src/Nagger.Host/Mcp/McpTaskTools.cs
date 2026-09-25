@@ -330,7 +330,8 @@ public sealed record McpRecurringTemplateResponse(
     string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? CancelledAt
+    DateTimeOffset? CancelledAt,
+    DateTimeOffset? NextDueAt
 )
 {
     public static McpRecurringTemplateResponse From(RecurringTaskTemplate template) =>
@@ -342,7 +343,8 @@ public sealed record McpRecurringTemplateResponse(
             template.Status.ToContractValue(),
             template.CreatedAt,
             template.UpdatedAt,
-            template.CancelledAt
+            template.CancelledAt,
+            template.CurrentInstance?.DueAt
         );
 }
 

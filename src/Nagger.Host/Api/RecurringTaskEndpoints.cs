@@ -83,7 +83,8 @@ public sealed record RecurringTemplateResponse(
     string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? CancelledAt
+    DateTimeOffset? CancelledAt,
+    DateTimeOffset? NextDueAt
 )
 {
     public static RecurringTemplateResponse From(RecurringTaskTemplate template) =>
@@ -95,7 +96,8 @@ public sealed record RecurringTemplateResponse(
             template.Status.ToContractValue(),
             template.CreatedAt,
             template.UpdatedAt,
-            template.CancelledAt
+            template.CancelledAt,
+            template.CurrentInstance?.DueAt
         );
 }
 

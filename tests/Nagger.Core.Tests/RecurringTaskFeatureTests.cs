@@ -362,6 +362,57 @@ public sealed class RecurringTaskFeatureTests
     }
 
     [Fact]
+    public void CurrentInstance_GivenActiveInstance_WhenRead_ThenReturnsActiveInstance()
+    {
+        var instance = new RecurringTaskInstance(1, 1, "Team sync", default, default, default);
+        Template(instances: instance).CurrentInstance.ShouldBe(instance);
+    }
+
+    [Fact]
+    public void CurrentInstance_GivenPausedInstance_WhenRead_ThenReturnsPausedInstance()
+    {
+        var instance = new RecurringTaskInstance(
+            1,
+            1,
+            "Team sync",
+            default,
+            default,
+            default,
+            Status: RecurringTaskInstanceStatus.Paused
+        );
+        Template(instances: instance).CurrentInstance.ShouldBe(instance);
+    }
+
+    [Fact]
+    public void CurrentInstance_GivenNoOpenInstance_WhenRead_ThenReturnsNull()
+    {
+        var template = Template(
+            instances:
+            [
+                new RecurringTaskInstance(
+                    1,
+                    1,
+                    "Team sync",
+                    default,
+                    default,
+                    default,
+                    Status: RecurringTaskInstanceStatus.Done
+                ),
+                new RecurringTaskInstance(
+                    2,
+                    1,
+                    "Team sync",
+                    default,
+                    default,
+                    default,
+                    Status: RecurringTaskInstanceStatus.Cancelled
+                ),
+            ]
+        );
+        template.CurrentInstance.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task CompleteOneShotTask_GivenTask_WhenCompleteRequested_ThenDoesNotCreateRecurringInstance()
     {
         var taskStore = new MemoryStore(new TaskItem(1, "Task", default, default, default));
