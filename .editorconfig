@@ -3,3 +3,8 @@ root = true
 [*.cs]
 dotnet_diagnostic.IDE0055.severity = none
 dotnet_diagnostic.IDE0130.severity = suggestion
+
+# Test names intentionally use underscores (Subject_GivenCondition_WhenAction_ThenOutcome),
+# so CA1707 (underscores in member names) is disabled for test code only.
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none
