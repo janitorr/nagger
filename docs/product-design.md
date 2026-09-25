@@ -1,7 +1,7 @@
 ---
 title: Nagger Product Design
 created: 2026-08-02
-updated: 2026-08-03
+updated: 2026-09-26
 tags:
   - type/product-design
   - project/hermes
@@ -59,13 +59,23 @@ Features remain vertical inside `Nagger.Core`:
 Nagger.Core/
 └─ Tasks/
    ├─ CreateOneShotTask.cs
+   ├─ CreateRecurringTask.cs
+   ├─ ListOpenOneShotTasks.cs
+   ├─ ListRecurringTasks.cs
    ├─ ManageOneShotTaskLifecycle.cs
+   ├─ ManageRecurringTaskLifecycle.cs
    ├─ MorningReport.cs
    ├─ Ports.cs
-   └─ TaskItem.cs
+   └─ Domain/
+      ├─ TaskItem.cs
+      ├─ RecurringTaskTemplate.cs
+      ├─ RecurringTaskInstance.cs
+      ├─ RecurrenceCalculator.cs
+      ├─ DateOnlyExtensions.cs
+      └─ Validation.cs
 ```
 
-The current implementation proves one-shot creation, lifecycle transitions, and morning reports. Recurring tasks, editing, and listing become new feature slices when their product contracts are settled.
+The current implementation proves one-shot and recurring task creation, lifecycle transitions, listing, and morning reports. Editing becomes a new feature slice when its product contract is settled.
 
 Shared task rules and model types move out only when multiple features genuinely need them.
 
@@ -81,7 +91,7 @@ Local development already uses the Host and SQLite topology. The planned Pi depl
 
 SQLite is the canonical store. EF Core migrations define and evolve its schema; the SQLite provider supplies persistence.
 
-The proven slice establishes only the schema needed for one-shot tasks and their lifecycle. It does not pre-design an event store, shopping tables, or a concurrency policy before the service has earned them.
+The proven slices establish only the schema they need — one-shot tasks, recurring templates, and recurring instances. The design does not pre-design an event store, shopping tables, or a concurrency policy before the service has earned them.
 
 ## Proven first vertical slice
 
@@ -103,10 +113,17 @@ Available REST endpoints:
 
 ```http
 POST /tasks/one-shot
+GET /tasks/one-shot
 POST /tasks/{id}/complete
 POST /tasks/{id}/pause
 POST /tasks/{id}/resume
 POST /tasks/{id}/cancel
+POST /tasks/recurring
+GET /tasks/recurring
+POST /tasks/recurring/{id}/complete
+POST /tasks/recurring/{id}/pause
+POST /tasks/recurring/{id}/resume
+POST /tasks/recurring/{id}/cancel
 GET /reports/morning?date=YYYY-MM-DD
 ```
 
@@ -125,11 +142,9 @@ The report endpoint remains read-only. A report read must not update task state 
 
 ## Deliberately deferred until iteration teaches us something
 
-- recurring task implementation;
 - event/history table design;
 - editing semantics;
 - detailed AI write-authority policy;
-- report ordering and upcoming-item policy;
 - production backup/restore automation;
 - shopping ledger implementation.
 

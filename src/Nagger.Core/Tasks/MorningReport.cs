@@ -47,100 +47,74 @@ public sealed class MorningReportHandler(
                 new Dictionary<string, string[]> { ["date"] = ["Date must use YYYY-MM-DD format."] }
             );
 
+        var timeZone = timeProvider.LocalTimeZone;
         var tasks = await store.GetActiveAsync(cancellationToken);
         var instances = await instanceReader.GetActiveAsync(cancellationToken);
 
-        var dueToday = 0;
-        var overdue = 0;
-        var upcoming = 0;
-        var items = new List<MorningReportItem>();
-        foreach (var task in tasks)
-            AddItem(
-                items,
-                ref dueToday,
-                ref overdue,
-                ref upcoming,
-                reportDate,
-                timeProvider.LocalTimeZone,
-                task.Id,
-                task.Title,
-                task.DueAt,
-                "one-shot"
-            );
-        foreach (var instance in instances)
-            AddItem(
-                items,
-                ref dueToday,
-                ref overdue,
-                ref upcoming,
-                reportDate,
-                timeProvider.LocalTimeZone,
-                instance.RecurringTaskId,
-                instance.Title,
-                instance.DueAt,
-                "recurring"
-            );
-
-        items = items.OrderBy(x => x.DueAt).ToList();
+        var items = tasks
+            .Select(task => ClassifyItem(task.Id, task.Title, task.DueAt, "one-shot", reportDate, timeZone))
+            .Concat(
+                instances.Select(instance =>
+                    ClassifyItem(
+                        instance.RecurringTaskId,
+                        instance.Title,
+                        instance.DueAt,
+                        "recurring",
+                        reportDate,
+                        timeZone
+                    )
+                )
+            )
+            .OfType<MorningReportItem>()
+            .OrderBy(item => item.DueAt)
+            .ToList();
 
         return new MorningReport(
             "4",
             timeProvider.GetUtcNow(),
             reportDate,
-            new MorningReportSummary(dueToday, overdue, upcoming),
+            new MorningReportSummary(
+                items.Count(item => item.DueState == "due_today"),
+                items.Count(item => item.DueState == "overdue"),
+                items.Count(item => item.DueState == "upcoming")
+            ),
             items
         );
     }
 
-    private static void AddItem(
-        List<MorningReportItem> items,
-        ref int dueToday,
-        ref int overdue,
-        ref int upcoming,
-        DateOnly reportDate,
-        TimeZoneInfo timeZone,
+    private static MorningReportItem? ClassifyItem(
         long id,
         string title,
         DateTimeOffset dueAt,
-        string type
+        string type,
+        DateOnly reportDate,
+        TimeZoneInfo timeZone
     )
     {
         var itemDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(dueAt, timeZone).DateTime);
         var comparison = itemDate.CompareTo(reportDate);
         if (comparison == 0)
-        {
-            dueToday++;
-            items.Add(new MorningReportItem(id, title, dueAt, type, "due_today", null, null));
-        }
-        else if (comparison < 0)
-        {
-            overdue++;
-            items.Add(
-                new MorningReportItem(
-                    id,
-                    title,
-                    dueAt,
-                    type,
-                    "overdue",
-                    reportDate.DayNumber - itemDate.DayNumber,
-                    null
-                )
+            return new MorningReportItem(id, title, dueAt, type, "due_today", null, null);
+        if (comparison < 0)
+            return new MorningReportItem(
+                id,
+                title,
+                dueAt,
+                type,
+                "overdue",
+                reportDate.DayNumber - itemDate.DayNumber,
+                null
             );
-        }
-        else if (itemDate <= reportDate.AddDays(7))
-        {
-            upcoming++;
-            items.Add(
-                new MorningReportItem(
-                    id,
-                    title,
-                    dueAt,
-                    type,
-                    "upcoming",
-                    null,
-                    itemDate.DayNumber - reportDate.DayNumber
-                )
+        if (itemDate <= reportDate.AddDays(7))
+            return new MorningReportItem(
+                id,
+                title,
+                dueAt,
+                type,
+                "upcoming",
+                null,
+                itemDate.DayNumber - reportDate.DayNumber
             );
-        }
+        return null;
     }
 }
