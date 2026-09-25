@@ -45,15 +45,20 @@ The MCP server SHALL expose a read-only `list_one_shot_tasks` tool with no requi
 - **THEN** the tool returns structured content containing an empty `tasks` array
 
 ### Requirement: List recurring task templates through MCP
-The MCP server SHALL expose a read-only `list_recurring_tasks` tool with no required arguments. The tool SHALL execute the Core recurring-template list query and return structured content as a JSON object whose `tasks` array contains the full template representation for each recurring task template, ordered by ascending durable template ID. The tool description SHALL identify each returned `id` as the template identifier used by the recurring lifecycle tools.
+The MCP server SHALL expose a read-only `list_recurring_tasks` tool with no required arguments. The tool SHALL execute the Core recurring-template list query and return structured content as a JSON object whose `tasks` array contains the full template representation for each recurring task template, ordered by ascending durable template ID. Each template representation SHALL include a `nextDueAt` timestamp equal to the due timestamp of the template's current open instance (active or paused), or `null` when the template has no open instance. The tool description SHALL identify each returned `id` as the template identifier used by the recurring lifecycle tools.
 
 #### Scenario: List recurring templates through MCP
 - **WHEN** a client calls `list_recurring_tasks` after recurring templates have been persisted
 - **THEN** the tool returns structured content containing a `tasks` array with those templates in ascending ID order without changing template state or timestamps
+- **AND** each template with an open instance includes a `nextDueAt` timestamp equal to that instance's due timestamp
 
 #### Scenario: List when no recurring templates exist through MCP
 - **WHEN** a client calls `list_recurring_tasks` and no recurring templates exist
 - **THEN** the tool returns structured content containing an empty `tasks` array
+
+#### Scenario: List a template with no open instance through MCP
+- **WHEN** a client calls `list_recurring_tasks` and a persisted recurring template has no open instance
+- **THEN** the tool returns the template with `nextDueAt` set to `null`
 
 ### Requirement: Create recurring tasks through MCP
 The MCP server SHALL expose a `create_recurring_task` tool accepting `title`, `startDate`, `recurrenceEvery`, and `recurrenceUnit`. It SHALL execute the existing Core create-recurring-task operation and return structured content whose top level contains the created template representation under `template` and the newly created first instance representation under `firstInstance`. The tool description SHALL state that the response contains both the template and its first instance.
