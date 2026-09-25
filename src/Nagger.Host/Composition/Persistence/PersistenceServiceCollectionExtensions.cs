@@ -19,7 +19,7 @@ public static class PersistenceServiceCollectionExtensions
         services.RemoveAll<TimeProvider>();
         services.AddSingleton<TimeProvider, ConfiguredTimeProvider>();
         services.AddScoped<IRecurringTaskTemplateStore, SqliteRecurringTaskTemplateStore>();
-        services.AddScoped<IRecurringTaskInstanceStore, SqliteRecurringTaskInstanceStore>();
+        services.AddScoped<IRecurringTaskInstanceReader, SqliteRecurringTaskInstanceReader>();
         return services;
     }
 }

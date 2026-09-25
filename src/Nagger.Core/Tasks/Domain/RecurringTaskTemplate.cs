@@ -8,6 +8,7 @@ public sealed record RecurringTaskTemplate(
     RecurringTaskStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
+    IReadOnlyList<RecurringTaskInstance> Instances,
     DateTimeOffset? CancelledAt = null
 )
 {
@@ -25,6 +26,11 @@ public sealed record RecurringTaskTemplate(
         {
             Status = RecurringTaskStatus.Paused,
             UpdatedAt = now,
+            Instances = Instances
+                .Select(instance =>
+                    instance.Status == RecurringTaskInstanceStatus.Active ? instance.Pause(now) : instance
+                )
+                .ToList(),
         };
     }
 
@@ -42,6 +48,11 @@ public sealed record RecurringTaskTemplate(
         {
             Status = RecurringTaskStatus.Active,
             UpdatedAt = now,
+            Instances = Instances
+                .Select(instance =>
+                    instance.Status == RecurringTaskInstanceStatus.Paused ? instance.Resume(now) : instance
+                )
+                .ToList(),
         };
     }
 
@@ -60,6 +71,44 @@ public sealed record RecurringTaskTemplate(
             Status = RecurringTaskStatus.Cancelled,
             UpdatedAt = now,
             CancelledAt = now,
+            Instances = Instances
+                .Select(instance =>
+                    instance.Status is RecurringTaskInstanceStatus.Active or RecurringTaskInstanceStatus.Paused
+                        ? instance.Cancel(now)
+                        : instance
+                )
+                .ToList(),
+        };
+    }
+
+    public RecurringTaskTemplate Complete(DateTimeOffset now, TimeZoneInfo localTimeZone)
+    {
+        var current =
+            Instances.FirstOrDefault(x => x.Status == RecurringTaskInstanceStatus.Active)
+            ?? throw new ValidationException(
+                new Dictionary<string, string[]> { ["status"] = ["Recurring task has no active instance to complete."] }
+            );
+
+        var completed = current.Complete(now);
+        var completedLocal = TimeZoneInfo.ConvertTime(completed.CompletedAt!.Value, localTimeZone);
+        var nextDueDate = RecurrenceCalculator.CalculateNextDue(DateOnly.FromDateTime(completedLocal.Date), Recurrence);
+
+        var next = new RecurringTaskInstance(
+            Id: 0,
+            RecurringTaskId: Id,
+            Title: Title,
+            DueAt: nextDueDate.ToDateTimeOffset(localTimeZone),
+            CreatedAt: now,
+            UpdatedAt: now,
+            Status: RecurringTaskInstanceStatus.Active
+        );
+
+        return this with
+        {
+            Instances = Instances
+                .Select(instance => instance.Id == current.Id ? completed : instance)
+                .Append(next)
+                .ToList(),
         };
     }
 }

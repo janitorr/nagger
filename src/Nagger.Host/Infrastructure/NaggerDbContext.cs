@@ -30,6 +30,11 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
         template.Property(x => x.Status).IsRequired();
         template.Property(x => x.CreatedAt).IsRequired();
         template.Property(x => x.UpdatedAt).IsRequired();
+        template
+            .HasMany(x => x.Instances)
+            .WithOne()
+            .HasForeignKey(x => x.RecurringTaskId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         var instance = modelBuilder.Entity<RecurringTaskInstanceEntity>();
         instance.ToTable("recurring_task_instances");
@@ -40,11 +45,6 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
         instance.Property(x => x.Status).IsRequired();
         instance.Property(x => x.CreatedAt).IsRequired();
         instance.Property(x => x.UpdatedAt).IsRequired();
-        instance
-            .HasOne<RecurringTaskTemplateEntity>()
-            .WithMany()
-            .HasForeignKey(x => x.RecurringTaskId)
-            .OnDelete(DeleteBehavior.Restrict);
         instance.HasIndex(x => x.RecurringTaskId);
         instance.HasIndex(x => x.Status);
     }
@@ -86,4 +86,5 @@ public sealed class RecurringTaskTemplateEntity
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? CancelledAt { get; set; }
+    public ICollection<RecurringTaskInstanceEntity> Instances { get; set; } = [];
 }

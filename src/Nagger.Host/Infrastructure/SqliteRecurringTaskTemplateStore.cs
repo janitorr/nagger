@@ -21,39 +21,37 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
             CreatedAt = recurringTemplate.CreatedAt,
             UpdatedAt = recurringTemplate.UpdatedAt,
             CancelledAt = recurringTemplate.CancelledAt,
+            Instances = recurringTemplate.Instances.Select(ToNewInstanceEntity).ToList(),
         };
 
         await dbContext.RecurringTaskTemplates.AddAsync(entity, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return recurringTemplate with
-        {
-            Id = entity.Id,
-        };
+        return ToModel(entity);
     }
 
     public async ValueTask<RecurringTaskTemplate?> GetByIdAsync(long id, CancellationToken cancellationToken)
     {
-        var entity = await dbContext.RecurringTaskTemplates.FindAsync(
-            new object[] { id },
-            cancellationToken: cancellationToken
-        );
+        var entity = await dbContext
+            .RecurringTaskTemplates.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Include(x => x.Instances.Where(instance => instance.Status == "active" || instance.Status == "paused"))
+            .SingleOrDefaultAsync(cancellationToken);
 
-        if (entity == null)
-        {
-            return null;
-        }
-
-        return ToModel(entity);
+        return entity is null ? null : ToModel(entity);
     }
 
-    public async ValueTask UpdateAsync(RecurringTaskTemplate recurringTemplate, CancellationToken cancellationToken)
+    public async ValueTask<RecurringTaskTemplate> UpdateAsync(
+        RecurringTaskTemplate recurringTemplate,
+        CancellationToken cancellationToken
+    )
     {
         var entity =
-            await dbContext.RecurringTaskTemplates.FindAsync(
-                new object[] { recurringTemplate.Id },
-                cancellationToken: cancellationToken
-            ) ?? throw new RecurringTaskNotFoundException(recurringTemplate.Id);
+            await dbContext
+                .RecurringTaskTemplates.Where(x => x.Id == recurringTemplate.Id)
+                .Include(x => x.Instances.Where(instance => instance.Status == "active" || instance.Status == "paused"))
+                .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new RecurringTaskNotFoundException(recurringTemplate.Id);
 
         entity.Title = recurringTemplate.Title;
         entity.StartDate = recurringTemplate.StartDate;
@@ -63,7 +61,24 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
         entity.UpdatedAt = recurringTemplate.UpdatedAt;
         entity.CancelledAt = recurringTemplate.CancelledAt;
 
+        foreach (var instance in recurringTemplate.Instances)
+        {
+            var existing = entity.Instances.SingleOrDefault(x => x.Id == instance.Id);
+            if (existing is null)
+            {
+                entity.Instances.Add(ToNewInstanceEntity(instance));
+                continue;
+            }
+
+            existing.Status = instance.Status.ToContractValue();
+            existing.UpdatedAt = instance.UpdatedAt;
+            existing.CompletedAt = instance.CompletedAt;
+            existing.CancelledAt = instance.CancelledAt;
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        return ToModel(entity);
     }
 
     public async ValueTask<IReadOnlyList<RecurringTaskTemplate>> GetAllAsync(CancellationToken cancellationToken)
@@ -75,6 +90,19 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
 
         return entities.Select(ToModel).ToList();
     }
+
+    private static RecurringTaskInstanceEntity ToNewInstanceEntity(RecurringTaskInstance instance) =>
+        new()
+        {
+            RecurringTaskId = instance.RecurringTaskId,
+            Title = instance.Title,
+            DueAt = instance.DueAt,
+            Status = instance.Status.ToContractValue(),
+            CreatedAt = instance.CreatedAt,
+            UpdatedAt = instance.UpdatedAt,
+            CompletedAt = instance.CompletedAt,
+            CancelledAt = instance.CancelledAt,
+        };
 
     private static RecurringTaskTemplate ToModel(RecurringTaskTemplateEntity entity) =>
         new(
@@ -88,6 +116,20 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
             Status: RecurringTaskStatuses.FromContractValue(entity.Status),
             CreatedAt: entity.CreatedAt,
             UpdatedAt: entity.UpdatedAt,
+            Instances: entity.Instances.OrderBy(x => x.Id).Select(ToInstanceModel).ToList(),
             CancelledAt: entity.CancelledAt
+        );
+
+    private static RecurringTaskInstance ToInstanceModel(RecurringTaskInstanceEntity entity) =>
+        new(
+            entity.Id,
+            entity.RecurringTaskId,
+            entity.Title,
+            entity.DueAt,
+            entity.CreatedAt,
+            entity.UpdatedAt,
+            RecurringTaskInstanceStatuses.FromContractValue(entity.Status),
+            entity.CompletedAt,
+            entity.CancelledAt
         );
 }

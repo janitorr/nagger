@@ -92,7 +92,7 @@ public sealed class TaskFeatureTests
         );
         var handler = new MorningReportHandler(
             store,
-            new MemoryRecurringTaskInstanceStore(),
+            new MemoryRecurringTaskInstanceReader(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         );
         var first = await handler.Handle(new("2026-08-04"), default);
@@ -123,7 +123,7 @@ public sealed class TaskFeatureTests
         );
         var report = await new MorningReportHandler(
             store,
-            new MemoryRecurringTaskInstanceStore(),
+            new MemoryRecurringTaskInstanceReader(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
         report.Summary.ShouldBe(new MorningReportSummary(0, 0, 1));
@@ -142,7 +142,7 @@ public sealed class TaskFeatureTests
         );
         var report = await new MorningReportHandler(
             store,
-            new MemoryRecurringTaskInstanceStore(),
+            new MemoryRecurringTaskInstanceReader(),
             new TestTimeProvider(timezone)
         ).Handle(new("2026-08-04"), default);
         report.Summary.DueToday.ShouldBe(1);
@@ -176,7 +176,7 @@ public sealed class TaskFeatureTests
                 default
             )
         );
-        var instanceStore = new MemoryRecurringTaskInstanceStore(
+        var instanceStore = new MemoryRecurringTaskInstanceReader(
             new RecurringTaskInstance(
                 10,
                 10,
@@ -217,7 +217,7 @@ public sealed class TaskFeatureTests
         var store = new MemoryStore(
             new TaskItem(1, "One-shot", new DateTimeOffset(2026, 8, 4, 8, 0, 0, TimeSpan.Zero), default, default)
         );
-        var instanceStore = new MemoryRecurringTaskInstanceStore(
+        var instanceStore = new MemoryRecurringTaskInstanceReader(
             new RecurringTaskInstance(
                 10,
                 5,
@@ -257,7 +257,7 @@ public sealed class TaskFeatureTests
         );
         var report = await new MorningReportHandler(
             store,
-            new MemoryRecurringTaskInstanceStore(),
+            new MemoryRecurringTaskInstanceReader(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
         report.Summary.ShouldBe(new MorningReportSummary(0, 0, 0));
@@ -302,7 +302,7 @@ public sealed class TaskFeatureTests
     {
         var handler = new MorningReportHandler(
             new MemoryStore(),
-            new MemoryRecurringTaskInstanceStore(),
+            new MemoryRecurringTaskInstanceReader(),
             new TestTimeProvider()
         );
         var exception = await Should.ThrowAsync<ValidationException>(async () =>
@@ -452,52 +452,26 @@ public sealed class TaskFeatureTests
         public ValueTask<RecurringTaskTemplate?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
             ValueTask.FromResult(Templates.SingleOrDefault(x => x.Id == id));
 
-        public ValueTask UpdateAsync(RecurringTaskTemplate recurringTemplate, CancellationToken cancellationToken)
+        public ValueTask<RecurringTaskTemplate> UpdateAsync(
+            RecurringTaskTemplate recurringTemplate,
+            CancellationToken cancellationToken
+        )
         {
             Templates[Templates.FindIndex(x => x.Id == recurringTemplate.Id)] = recurringTemplate;
             Updates++;
-            return ValueTask.CompletedTask;
+            return ValueTask.FromResult(recurringTemplate);
         }
 
         public ValueTask<IReadOnlyList<RecurringTaskTemplate>> GetAllAsync(CancellationToken cancellationToken) =>
             ValueTask.FromResult<IReadOnlyList<RecurringTaskTemplate>>(Templates.OrderBy(x => x.Id).ToList());
     }
 
-    private sealed class MemoryRecurringTaskInstanceStore(params RecurringTaskInstance[] instances)
-        : IRecurringTaskInstanceStore
+    private sealed class MemoryRecurringTaskInstanceReader(params RecurringTaskInstance[] instances)
+        : IRecurringTaskInstanceReader
     {
-        public List<RecurringTaskInstance> Instances { get; } = [.. instances];
-
-        public ValueTask<RecurringTaskInstance> AddAsync(
-            RecurringTaskInstance instance,
-            CancellationToken cancellationToken
-        )
-        {
-            instance = instance with { Id = Instances.Count + 1 };
-            Instances.Add(instance);
-            return ValueTask.FromResult(instance);
-        }
-
-        public ValueTask<RecurringTaskInstance?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
-            ValueTask.FromResult(Instances.SingleOrDefault(x => x.Id == id));
-
-        public ValueTask UpdateAsync(RecurringTaskInstance instance, CancellationToken cancellationToken)
-        {
-            Instances[Instances.FindIndex(x => x.Id == instance.Id)] = instance;
-            return ValueTask.CompletedTask;
-        }
-
         public ValueTask<IReadOnlyList<RecurringTaskInstance>> GetActiveAsync(CancellationToken cancellationToken) =>
             ValueTask.FromResult<IReadOnlyList<RecurringTaskInstance>>(
-                Instances.Where(x => x.Status == RecurringTaskInstanceStatus.Active).ToList()
-            );
-
-        public ValueTask<IReadOnlyList<RecurringTaskInstance>> GetByTemplateIdAsync(
-            long recurringTaskId,
-            CancellationToken cancellationToken
-        ) =>
-            ValueTask.FromResult<IReadOnlyList<RecurringTaskInstance>>(
-                Instances.Where(x => x.RecurringTaskId == recurringTaskId).OrderBy(x => x.Id).ToList()
+                instances.Where(x => x.Status == RecurringTaskInstanceStatus.Active).ToList()
             );
     }
 }
