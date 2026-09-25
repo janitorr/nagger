@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
 using Mediator;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Nagger.Core.Tasks;
@@ -10,8 +11,9 @@ using RequiredAttribute = System.ComponentModel.DataAnnotations.RequiredAttribut
 
 namespace Nagger.Host.Mcp;
 
-public sealed class McpTaskTools(IMediator mediator)
+public sealed class McpTaskTools(IMediator mediator, ILogger<McpTaskTools> logger)
 {
+    private const string UnexpectedErrorMessage = "An unexpected error occurred.";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [McpServerTool(
@@ -248,7 +250,10 @@ public sealed class McpTaskTools(IMediator mediator)
             McpMorningReportResponse.From(await mediator.Send(new MorningReportQuery(date), cancellationToken))
         );
 
-    private static async Task<CallToolResult> Run<T>(Func<Task<T>> action)
+    private async Task<CallToolResult> Run<T>(
+        Func<Task<T>> action,
+        [System.Runtime.CompilerServices.CallerMemberName] string toolName = ""
+    )
     {
         try
         {
@@ -270,6 +275,16 @@ public sealed class McpTaskTools(IMediator mediator)
         catch (RecurringTaskNotFoundException exception)
         {
             return Error(exception.Message);
+        }
+        catch (OperationCanceledException exception)
+        {
+            AppLog.McpToolCancelled(logger, toolName, exception);
+            return Error(UnexpectedErrorMessage);
+        }
+        catch (Exception exception)
+        {
+            AppLog.McpToolFailed(logger, toolName, exception);
+            return Error(UnexpectedErrorMessage);
         }
     }
 

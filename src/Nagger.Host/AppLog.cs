@@ -37,4 +37,10 @@ public static partial class AppLog
         Message = "Dispatch {MessageType} not found ({ErrorType}) in {ElapsedMs}ms"
     )]
     public static partial void DispatchNotFound(ILogger logger, string messageType, string errorType, long elapsedMs);
+
+    [LoggerMessage(EventId = 1008, Level = LogLevel.Error, Message = "MCP tool {ToolName} failed unexpectedly")]
+    public static partial void McpToolFailed(ILogger logger, string toolName, Exception exception);
+
+    [LoggerMessage(EventId = 1009, Level = LogLevel.Warning, Message = "MCP tool {ToolName} was cancelled")]
+    public static partial void McpToolCancelled(ILogger logger, string toolName, Exception exception);
 }
