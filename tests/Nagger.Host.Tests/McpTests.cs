@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Nagger.Core.Tasks;
 using Nagger.Host.Infrastructure;
 using Shouldly;
 
@@ -391,6 +393,35 @@ public sealed class McpTests
         (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Tasks.SingleAsync()).Status.ShouldBe(
             "paused"
         );
+    }
+
+    [Fact]
+    public async Task Mcp_GivenThrowingStore_WhenCreateRequested_ThenReturnsSanitizedError()
+    {
+        using var factory = new NaggerFactory(services =>
+        {
+            services.RemoveAll<ITaskStore>();
+            services.AddScoped<ITaskStore, ThrowingStore>();
+        });
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new
+            {
+                name = "create_one_shot_task",
+                arguments = new { title = "Secret task", dueAt = "2026-08-04T09:00:00+03:00" },
+            }
+        );
+
+        var result = response.RootElement.GetProperty("result");
+        result.GetProperty("isError").GetBoolean().ShouldBeTrue();
+        result.GetProperty("content")[0].GetProperty("text").GetString().ShouldBe("An unexpected error occurred.");
+        response.RootElement.ToString().ShouldNotContain("storage failure", Case.Insensitive);
     }
 
     [Fact]
