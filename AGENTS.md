@@ -17,6 +17,10 @@
 - Code is formatted with CSharpier (120-column, see `.csharpierrc`). Run `dotnet csharpier format .` before committing any C# change.
 - A `pre-commit` hook (enabled via `git config core.hooksPath .githooks`) runs `dotnet csharpier check .` and blocks commits with unformatted C#. Do not commit with `--no-verify` to bypass it; the CI build fails on unformatted code.
 
+## Git And Pull Requests
+
+- Merge pull requests by rebasing; never squash or create merge commits. Keep feature branches rebased on `origin/main` before pushing rather than merging `main` into them.
+
 ## Analyzer Warnings
 
 - CA analyzer warnings fail the build, the same way formatting violations do. The root `Directory.Build.props` sets `CodeAnalysisTreatWarningsAsErrors=true`, scoped to code-analysis rules so NuGet (`NU*`) and compiler (`CS*`) warnings remain warnings.
