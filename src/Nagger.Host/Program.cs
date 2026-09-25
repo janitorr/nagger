@@ -25,7 +25,8 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetRequiredService<TimeProvider>();
+    // Resolve the clock up front so an invalid Nagger:TimeZone fails at startup, not on the first request.
+    _ = scope.ServiceProvider.GetRequiredService<TimeProvider>();
     await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().Database.MigrateAsync();
 }
 
