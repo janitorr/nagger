@@ -28,7 +28,7 @@ public sealed record MorningReportItem(
 
 public sealed class MorningReportHandler(
     ITaskStore store,
-    IRecurringTaskInstanceStore instanceStore,
+    IRecurringTaskInstanceReader instanceReader,
     TimeProvider timeProvider
 ) : IQueryHandler<MorningReportQuery, MorningReport>
 {
@@ -48,7 +48,7 @@ public sealed class MorningReportHandler(
             );
 
         var tasks = await store.GetActiveAsync(cancellationToken);
-        var instances = await instanceStore.GetActiveAsync(cancellationToken);
+        var instances = await instanceReader.GetActiveAsync(cancellationToken);
 
         var dueToday = 0;
         var overdue = 0;

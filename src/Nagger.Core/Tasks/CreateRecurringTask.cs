@@ -48,11 +48,8 @@ public sealed record CreateRecurringTaskCommand(string? Title, string? StartDate
 
 public sealed record RecurrenceRuleInput(int? Every, string? Unit);
 
-public sealed class CreateRecurringTaskHandler(
-    IRecurringTaskTemplateStore templateStore,
-    IRecurringTaskInstanceStore instanceStore,
-    TimeProvider timeProvider
-) : ICommandHandler<CreateRecurringTaskCommand, CreateRecurringTaskResult>
+public sealed class CreateRecurringTaskHandler(IRecurringTaskTemplateStore templateStore, TimeProvider timeProvider)
+    : ICommandHandler<CreateRecurringTaskCommand, CreateRecurringTaskResult>
 {
     public async ValueTask<CreateRecurringTaskResult> Handle(
         CreateRecurringTaskCommand command,
@@ -62,7 +59,17 @@ public sealed class CreateRecurringTaskHandler(
         var (title, startDate, recurrence) = command.Parse(Today());
 
         var now = timeProvider.GetUtcNow();
-        var createdTemplate = await templateStore.AddAsync(
+        var firstInstance = new RecurringTaskInstance(
+            Id: 0,
+            RecurringTaskId: 0,
+            Title: title,
+            DueAt: startDate.ToDateTimeOffset(timeProvider.LocalTimeZone),
+            CreatedAt: now,
+            UpdatedAt: now,
+            Status: RecurringTaskInstanceStatus.Active
+        );
+
+        var persisted = await templateStore.AddAsync(
             new RecurringTaskTemplate(
                 Id: 0,
                 Title: title,
@@ -70,24 +77,13 @@ public sealed class CreateRecurringTaskHandler(
                 Recurrence: recurrence,
                 Status: RecurringTaskStatus.Active,
                 CreatedAt: now,
-                UpdatedAt: now
+                UpdatedAt: now,
+                Instances: [firstInstance]
             ),
             cancellationToken
         );
 
-        var firstInstance = new RecurringTaskInstance(
-            Id: 0,
-            RecurringTaskId: createdTemplate.Id,
-            Title: createdTemplate.Title,
-            DueAt: createdTemplate.StartDate.ToDateTimeOffset(timeProvider.LocalTimeZone),
-            CreatedAt: now,
-            UpdatedAt: now,
-            Status: RecurringTaskInstanceStatus.Active
-        );
-
-        var persistedInstance = await instanceStore.AddAsync(firstInstance, cancellationToken);
-
-        return new CreateRecurringTaskResult(createdTemplate, persistedInstance);
+        return new CreateRecurringTaskResult(persisted, persisted.Instances.Single());
     }
 
     private DateOnly Today() =>

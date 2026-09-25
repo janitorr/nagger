@@ -135,10 +135,15 @@ namespace Nagger.Host.Infrastructure.Migrations
             modelBuilder.Entity("Nagger.Host.Infrastructure.RecurringTaskInstanceEntity", b =>
                 {
                     b.HasOne("Nagger.Host.Infrastructure.RecurringTaskTemplateEntity", null)
-                        .WithMany()
+                        .WithMany("Instances")
                         .HasForeignKey("RecurringTaskId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Nagger.Host.Infrastructure.RecurringTaskTemplateEntity", b =>
+                {
+                    b.Navigation("Instances");
                 });
 #pragma warning restore 612, 618
         }
