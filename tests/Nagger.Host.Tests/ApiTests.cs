@@ -527,6 +527,25 @@ public sealed class ApiTests
     }
 
     [Fact]
+    public async Task ListRecurringTemplates_GivenActivePausedAndCancelledTemplates_WhenRequested_ThenReturnsNextDueAtFromOpenInstance()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await CreateRecurringTemplateAsync(client, "Active");
+        var pausedId = await CreateRecurringTemplateAsync(client, "Paused");
+        var cancelledId = await CreateRecurringTemplateAsync(client, "Cancelled");
+        using var paused = await client.PostAsync($"/tasks/recurring/{pausedId}/pause", null);
+        using var cancelled = await client.PostAsync($"/tasks/recurring/{cancelledId}/cancel", null);
+
+        using var templates = JsonDocument.Parse(await client.GetStringAsync("/tasks/recurring"));
+
+        var expectedNextDue = $"{FutureStartDate()}T00:00:00+03:00";
+        templates.RootElement[0].GetProperty("nextDueAt").GetString().ShouldBe(expectedNextDue);
+        templates.RootElement[1].GetProperty("nextDueAt").GetString().ShouldBe(expectedNextDue);
+        templates.RootElement[2].GetProperty("nextDueAt").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
     public async Task CompleteRecurringTask_GivenTemplateWithActiveInstance_WhenCompleteRequested_ThenCompletesInstanceAndCreatesNext()
     {
         using var factory = new NaggerFactory();

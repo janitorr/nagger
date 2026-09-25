@@ -85,6 +85,7 @@ public sealed class SqliteRecurringTaskTemplateStore(NaggerDbContext dbContext) 
     {
         var entities = await dbContext
             .RecurringTaskTemplates.AsNoTracking()
+            .Include(x => x.Instances.Where(instance => instance.Status == "active" || instance.Status == "paused"))
             .OrderBy(x => x.Id)
             .ToListAsync(cancellationToken);
 
