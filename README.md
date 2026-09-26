@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="DEVELOPMENT.md">Development</a> | <a href="USAGE.md">Usage</a> | <a href="docs/hermes-integration.md">Hermes Integration</a>
+  <a href="DEVELOPMENT.md">Development</a> | <a href="USAGE.md">Usage</a> | <a href="CHANGELOG.md">Changelog</a> | <a href="docs/hermes-integration.md">Hermes Integration</a>
 </p>
 
 ![Nagger banner](resources/repo_banner.jpg)
@@ -64,3 +64,7 @@ Every endpoint and tool is in [Usage](USAGE.md); build, test, and mutation gates
 
 - A shopping ledger for the things you will definitely remember at the shop. Until you do not.
 - Deployment automation, so Nagger can get back to its important work: judging your follow-through.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
