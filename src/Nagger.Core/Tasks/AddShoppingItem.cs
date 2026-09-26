@@ -7,13 +7,7 @@ public sealed record AddShoppingItemResult(ShoppingItem Item, bool Created);
 
 public sealed record AddShoppingItemCommand(string? Name) : ICommand<AddShoppingItemResult>
 {
-    public string ParseName()
-    {
-        if (string.IsNullOrWhiteSpace(Name))
-            throw new ValidationException(new Dictionary<string, string[]> { ["name"] = ["Name is required."] });
-
-        return Name.Trim();
-    }
+    public string ParseName() => ShoppingItemName.Parse(Name);
 }
 
 public sealed class AddShoppingItemHandler(IShoppingItemStore store)

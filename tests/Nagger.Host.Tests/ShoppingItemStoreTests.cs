@@ -58,6 +58,29 @@ public sealed class ShoppingItemStoreTests
         }
     }
 
+    // SQLite's NOCASE collation folds ASCII case only, so non-ASCII case stays distinct (documented, accepted limitation).
+    [Fact]
+    public async Task SqliteShoppingItemStore_GivenNonAsciiCaseVariantName_WhenAdded_ThenKeepsDistinctItems()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"nagger-{Guid.NewGuid():N}.db");
+        try
+        {
+            await using var database = CreateContext(databasePath);
+            await database.Database.MigrateAsync();
+            var store = new SqliteShoppingItemStore(database);
+
+            await store.AddAsync(new ShoppingItem(0, "NÜSSE"), default);
+            await store.AddAsync(new ShoppingItem(0, "nüsse"), default);
+
+            (await store.GetAllAsync(default)).Select(x => x.Name).ShouldBe(["NÜSSE", "nüsse"]);
+        }
+        finally
+        {
+            if (File.Exists(databasePath))
+                File.Delete(databasePath);
+        }
+    }
+
     private static NaggerDbContext CreateContext(string databasePath)
     {
         var options = new DbContextOptionsBuilder<NaggerDbContext>().UseSqlite($"Data Source={databasePath}").Options;

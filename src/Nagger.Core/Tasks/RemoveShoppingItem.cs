@@ -5,13 +5,7 @@ namespace Nagger.Core.Tasks;
 
 public sealed record RemoveShoppingItemCommand(string? Name) : ICommand<string>
 {
-    public string ParseName()
-    {
-        if (string.IsNullOrWhiteSpace(Name))
-            throw new ValidationException(new Dictionary<string, string[]> { ["name"] = ["Name is required."] });
-
-        return Name.Trim();
-    }
+    public string ParseName() => ShoppingItemName.Parse(Name);
 }
 
 public sealed class RemoveShoppingItemHandler(IShoppingItemStore store)

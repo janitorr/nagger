@@ -471,6 +471,20 @@ public sealed class ApiTests
     }
 
     [Fact]
+    public async Task RemoveShoppingItem_GivenNameWithSpace_WhenRemoveRequested_ThenRemovesItem()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await AddShoppingItemAsync(client, "olive oil");
+
+        var response = await client.DeleteAsync($"/shopping/{Uri.EscapeDataString("olive oil")}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task MorningReport_GivenShoppingItems_WhenRequested_ThenIncludesShoppingSection()
     {
         using var factory = new NaggerFactory();
