@@ -5,7 +5,7 @@ Provide deterministic, versioned morning task data for downstream digest generat
 ## Requirements
 
 ### Requirement: Produce a versioned morning task report
-The service SHALL provide `GET /reports/morning?date=YYYY-MM-DD`. For a valid requested date, it SHALL return JSON with `schemaVersion` of `"4"`, `generatedAt`, `date`, a task summary with counts for `dueToday`, `overdue`, and `upcoming`, and task item detail for active tasks that are overdue, due today, or due within the inclusive seven-calendar-day window after the requested date. Each task item SHALL use camelCase fields including `type`, `dueAt`, `dueState`, `daysOverdue`, and `daysUntilDue`.
+The service SHALL provide `GET /reports/morning?date=YYYY-MM-DD`. For a valid requested date, it SHALL return JSON with `schemaVersion` of `"5"`, `generatedAt`, `date`, a task summary with counts for `dueToday`, `overdue`, and `upcoming`, task item detail for active tasks that are overdue, due today, or due within the inclusive seven-calendar-day window after the requested date, and a `shopping` array listing open shopping items. Each task item SHALL use camelCase fields including `type`, `dueAt`, `dueState`, `daysOverdue`, and `daysUntilDue`.
 
 The `type` field SHALL be `one-shot` for one-shot tasks and `recurring` for recurring tasks. A recurring item SHALL use the recurring task template id as its `id` and SHALL report the due timestamp of its current active instance.
 
@@ -61,3 +61,18 @@ The service SHALL reject a morning report request without a `date` query paramet
 #### Scenario: Reject an invalid report date
 - **WHEN** a client requests the morning report with a missing or malformed date
 - **THEN** the service returns a structured JSON validation error and does not modify task state
+
+### Requirement: Include open shopping items in the report
+The service SHALL include a `shopping` array in the report. Each element SHALL be a shopping item representation containing an `id` and a `name`. The array SHALL contain every open shopping item, ordered by ascending `id`. When no open shopping items exist, the array SHALL be empty. Generating the report SHALL NOT create, update, or remove shopping items.
+
+#### Scenario: Report open shopping items
+- **WHEN** open shopping items exist when a morning report is requested
+- **THEN** the report includes them in the `shopping` array ordered by ascending `id`
+
+#### Scenario: Report an empty shopping list
+- **WHEN** no open shopping items exist when a morning report is requested
+- **THEN** the report includes an empty `shopping` array
+
+#### Scenario: Report reads do not change shopping items
+- **WHEN** a client requests the morning report repeatedly
+- **THEN** shopping items remain unchanged by each report read
