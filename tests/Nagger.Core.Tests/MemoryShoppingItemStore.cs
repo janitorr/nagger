@@ -9,26 +9,36 @@ internal sealed class MemoryShoppingItemStore(params ShoppingItem[] items) : ISh
     public int Adds { get; private set; }
     public int Removes { get; private set; }
 
-    public ValueTask<ShoppingItem> AddAsync(ShoppingItem item, CancellationToken cancellationToken)
+    public ValueTask<(ShoppingItem Item, bool Created)> AddIfAbsentAsync(
+        ShoppingItem item,
+        CancellationToken cancellationToken
+    )
     {
-        item = item with { Id = Items.Count + 1 };
-        Items.Add(item);
+        var existing = Find(item.Name);
+        if (existing is not null)
+            return ValueTask.FromResult<(ShoppingItem, bool)>((existing, false));
+
+        var created = item with { Id = Items.Count + 1 };
+        Items.Add(created);
         Adds++;
-        return ValueTask.FromResult(item);
+        return ValueTask.FromResult<(ShoppingItem, bool)>((created, true));
     }
 
-    public ValueTask<ShoppingItem?> GetByNameAsync(string name, CancellationToken cancellationToken) =>
-        ValueTask.FromResult(
-            Items.SingleOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))
-        );
-
-    public ValueTask RemoveAsync(ShoppingItem item, CancellationToken cancellationToken)
+    public ValueTask RemoveByNameAsync(string name, CancellationToken cancellationToken)
     {
-        Items.RemoveAll(x => x.Id == item.Id);
-        Removes++;
+        var index = Items.FindIndex(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (index >= 0)
+        {
+            Items.RemoveAt(index);
+            Removes++;
+        }
+
         return ValueTask.CompletedTask;
     }
 
     public ValueTask<IReadOnlyList<ShoppingItem>> GetAllAsync(CancellationToken cancellationToken) =>
         ValueTask.FromResult<IReadOnlyList<ShoppingItem>>(Items.OrderBy(x => x.Id).ToList());
+
+    private ShoppingItem? Find(string name) =>
+        Items.SingleOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
 }

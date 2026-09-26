@@ -17,16 +17,16 @@ public sealed class ShoppingItemStoreTests
             await database.Database.MigrateAsync();
             var store = new SqliteShoppingItemStore(database);
 
-            var milk = await store.AddAsync(new ShoppingItem(0, "milk"), default);
-            var yogurt = await store.AddAsync(new ShoppingItem(0, "yogurt"), default);
+            var (milk, milkCreated) = await store.AddIfAbsentAsync(new ShoppingItem(0, "milk"), default);
+            var (yogurt, _) = await store.AddIfAbsentAsync(new ShoppingItem(0, "yogurt"), default);
 
+            milkCreated.ShouldBeTrue();
             milk.Id.ShouldBe(1);
             yogurt.Id.ShouldBe(2);
             (await store.GetAllAsync(default)).Select(x => x.Name).ShouldBe(["milk", "yogurt"]);
 
-            (await store.GetByNameAsync("MILK", default)).ShouldBe(milk);
+            await store.RemoveByNameAsync("MILK", default);
 
-            await store.RemoveAsync(milk, default);
             (await store.GetAllAsync(default)).Select(x => x.Name).ShouldBe(["yogurt"]);
         }
         finally
@@ -37,7 +37,7 @@ public sealed class ShoppingItemStoreTests
     }
 
     [Fact]
-    public async Task SqliteShoppingItemStore_GivenCaseVariantName_WhenAdded_ThenRejectsDuplicate()
+    public async Task SqliteShoppingItemStore_GivenCaseVariantName_WhenAdded_ThenReturnsExistingWithoutDuplicate()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"nagger-{Guid.NewGuid():N}.db");
         try
@@ -45,11 +45,36 @@ public sealed class ShoppingItemStoreTests
             await using var database = CreateContext(databasePath);
             await database.Database.MigrateAsync();
             var store = new SqliteShoppingItemStore(database);
-            await store.AddAsync(new ShoppingItem(0, "milk"), default);
 
-            await Should.ThrowAsync<DbUpdateException>(async () =>
-                await store.AddAsync(new ShoppingItem(0, "Milk"), default)
-            );
+            var (first, firstCreated) = await store.AddIfAbsentAsync(new ShoppingItem(0, "milk"), default);
+            var (second, secondCreated) = await store.AddIfAbsentAsync(new ShoppingItem(0, "Milk"), default);
+
+            firstCreated.ShouldBeTrue();
+            secondCreated.ShouldBeFalse();
+            second.ShouldBe(first);
+            (await store.GetAllAsync(default)).ShouldHaveSingleItem();
+        }
+        finally
+        {
+            if (File.Exists(databasePath))
+                File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task SqliteShoppingItemStore_GivenAbsentName_WhenRemoved_ThenLeavesListUnchanged()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"nagger-{Guid.NewGuid():N}.db");
+        try
+        {
+            await using var database = CreateContext(databasePath);
+            await database.Database.MigrateAsync();
+            var store = new SqliteShoppingItemStore(database);
+            await store.AddIfAbsentAsync(new ShoppingItem(0, "milk"), default);
+
+            await store.RemoveByNameAsync("yogurt", default);
+
+            (await store.GetAllAsync(default)).Select(x => x.Name).ShouldBe(["milk"]);
         }
         finally
         {
@@ -69,9 +94,11 @@ public sealed class ShoppingItemStoreTests
             await database.Database.MigrateAsync();
             var store = new SqliteShoppingItemStore(database);
 
-            await store.AddAsync(new ShoppingItem(0, "NÜSSE"), default);
-            await store.AddAsync(new ShoppingItem(0, "nüsse"), default);
+            var (_, upperCreated) = await store.AddIfAbsentAsync(new ShoppingItem(0, "NÜSSE"), default);
+            var (_, lowerCreated) = await store.AddIfAbsentAsync(new ShoppingItem(0, "nüsse"), default);
 
+            upperCreated.ShouldBeTrue();
+            lowerCreated.ShouldBeTrue();
             (await store.GetAllAsync(default)).Select(x => x.Name).ShouldBe(["NÜSSE", "nüsse"]);
         }
         finally

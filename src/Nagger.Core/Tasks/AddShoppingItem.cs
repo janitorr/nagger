@@ -19,11 +19,7 @@ public sealed class AddShoppingItemHandler(IShoppingItemStore store)
     )
     {
         var name = command.ParseName();
-        var existing = await store.GetByNameAsync(name, cancellationToken);
-        if (existing is not null)
-            return new AddShoppingItemResult(existing, false);
-
-        var created = await store.AddAsync(new ShoppingItem(0, name), cancellationToken);
-        return new AddShoppingItemResult(created, true);
+        var (item, created) = await store.AddIfAbsentAsync(new ShoppingItem(0, name), cancellationToken);
+        return new AddShoppingItemResult(item, created);
     }
 }
