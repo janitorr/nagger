@@ -51,6 +51,9 @@ public sealed class McpTests
         names.ShouldContain("cancel_recurring_task");
         names.ShouldContain("list_recurring_tasks");
         names.ShouldContain("get_morning_report");
+        names.ShouldContain("add_shopping_item");
+        names.ShouldContain("remove_shopping_item");
+        names.ShouldContain("list_shopping_items");
     }
 
     [Fact]
@@ -207,7 +210,7 @@ public sealed class McpTests
         );
         var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
 
-        report.GetProperty("schemaVersion").GetString().ShouldBe("4");
+        report.GetProperty("schemaVersion").GetString().ShouldBe("5");
         report.GetProperty("generatedAt").GetString().ShouldNotBeNullOrEmpty();
         var summary = report.GetProperty("summary");
         summary.GetProperty("dueToday").ValueKind.ShouldBe(JsonValueKind.Number);
@@ -495,6 +498,180 @@ public sealed class McpTests
         (
             await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().RecurringTaskTemplates.CountAsync()
         ).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenShoppingName_WhenAddRequested_ThenReturnsItem()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new { name = "add_shopping_item", arguments = new { name = "milk" } }
+        );
+        var item = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        item.GetProperty("id").GetInt64().ShouldBe(1);
+        item.GetProperty("name").GetString().ShouldBe("milk");
+    }
+
+    [Fact]
+    public async Task Mcp_GivenCaseVariantName_WhenAddRequested_ThenReturnsExistingItemWithoutDuplicate()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await AddShoppingItemAsync(client, session, 2, "milk");
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "add_shopping_item", arguments = new { name = "MILK" } }
+        );
+        var item = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        item.GetProperty("id").GetInt64().ShouldBe(1);
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenBlankName_WhenAddRequested_ThenReturnsErrorWithoutPersisting()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            2,
+            "tools/call",
+            new { name = "add_shopping_item", arguments = new { name = " " } }
+        );
+
+        response.RootElement.GetProperty("result").GetProperty("isError").GetBoolean().ShouldBeTrue();
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenShoppingItems_WhenListRequested_ThenReturnsShoppingArrayInIdOrder()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await AddShoppingItemAsync(client, session, 2, "milk");
+        await AddShoppingItemAsync(client, session, 3, "yogurt");
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            4,
+            "tools/call",
+            new { name = "list_shopping_items", arguments = new { } }
+        );
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        structuredContent.ValueKind.ShouldBe(JsonValueKind.Object);
+        structuredContent
+            .GetProperty("shopping")
+            .EnumerateArray()
+            .Select(x => x.GetProperty("name").GetString())
+            .ShouldBe(["milk", "yogurt"]);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenShoppingItem_WhenRemoveRequested_ThenRemovesItem()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await AddShoppingItemAsync(client, session, 2, "milk");
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "remove_shopping_item", arguments = new { name = "Milk" } }
+        );
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        structuredContent.GetProperty("name").GetString().ShouldBe("Milk");
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenAbsentName_WhenRemoveRequested_ThenSucceedsWithoutChangingList()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await AddShoppingItemAsync(client, session, 2, "milk");
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "remove_shopping_item", arguments = new { name = "yogurt" } }
+        );
+        var structuredContent = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        structuredContent.GetProperty("name").GetString().ShouldBe("yogurt");
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Mcp_GivenShoppingItems_WhenMorningReportRequested_ThenIncludesShoppingSection()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        var session = await InitializeMcpAsync(client);
+        await AddShoppingItemAsync(client, session, 2, "milk");
+
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            3,
+            "tools/call",
+            new { name = "get_morning_report", arguments = new { date = "2026-08-04" } }
+        );
+        var report = response.RootElement.GetProperty("result").GetProperty("structuredContent");
+
+        report.GetProperty("schemaVersion").GetString().ShouldBe("5");
+        report
+            .GetProperty("shopping")
+            .EnumerateArray()
+            .Select(x => x.GetProperty("name").GetString())
+            .ShouldBe(["milk"]);
+    }
+
+    private static async Task<long> AddShoppingItemAsync(
+        HttpClient client,
+        McpSession session,
+        int requestId,
+        string name
+    )
+    {
+        using var response = await SendMcpAsync(
+            client,
+            session,
+            requestId,
+            "tools/call",
+            new { name = "add_shopping_item", arguments = new { name } }
+        );
+        return response.RootElement.GetProperty("result").GetProperty("structuredContent").GetProperty("id").GetInt64();
     }
 
     private static async Task<long> CreateRecurringTaskAsync(HttpClient client, McpSession session, int requestId)

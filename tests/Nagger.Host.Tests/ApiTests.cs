@@ -91,7 +91,7 @@ public sealed class ApiTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var report = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("4");
+        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("5");
         report.RootElement.GetProperty("generatedAt").GetString().ShouldNotBeNullOrEmpty();
         var summary = report.RootElement.GetProperty("summary");
         summary.GetProperty("dueToday").ValueKind.ShouldBe(JsonValueKind.Number);
@@ -365,6 +365,149 @@ public sealed class ApiTests
 
         logger.EventIds.ShouldBe([1007]);
         string.Join(" ", logger.Messages).ShouldNotContain("Pay rent");
+    }
+
+    [Fact]
+    public async Task AddShoppingItem_GivenNewName_WhenAddRequested_ThenReturnsCreatedItem()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/shopping", new { name = "milk" });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        using var item = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        item.RootElement.GetProperty("id").GetInt64().ShouldBe(1);
+        item.RootElement.GetProperty("name").GetString().ShouldBe("milk");
+    }
+
+    [Fact]
+    public async Task AddShoppingItem_GivenExistingNameVariant_WhenAddRequested_ThenReturnsOkWithoutDuplicate()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await AddShoppingItemAsync(client, "milk");
+
+        var response = await client.PostAsJsonAsync("/shopping", new { name = "  Milk  " });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var item = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        item.RootElement.GetProperty("id").GetInt64().ShouldBe(1);
+        item.RootElement.GetProperty("name").GetString().ShouldBe("milk");
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AddShoppingItem_GivenBlankName_WhenAddRequested_ThenReturnsValidationErrorWithoutPersisting()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/shopping", new { name = " " });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        body.RootElement.GetProperty("errors").TryGetProperty("name", out _).ShouldBeTrue();
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ListShoppingItems_GivenItems_WhenRequested_ThenReturnsInAscendingIdOrder()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await AddShoppingItemAsync(client, "milk");
+        await AddShoppingItemAsync(client, "yogurt");
+
+        var response = await client.GetAsync("/shopping");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var items = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        items.RootElement.EnumerateArray().Select(x => x.GetProperty("id").GetInt64()).ShouldBe([1, 2]);
+        items.RootElement[0].GetProperty("name").GetString().ShouldBe("milk");
+    }
+
+    [Fact]
+    public async Task ListShoppingItems_GivenNoItems_WhenRequested_ThenReturnsEmptyArray()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/shopping");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var items = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        items.RootElement.GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task RemoveShoppingItem_GivenExistingName_WhenRemoveRequested_ThenRemovesItem()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await AddShoppingItemAsync(client, "milk");
+
+        var response = await client.DeleteAsync("/shopping/Milk");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task RemoveShoppingItem_GivenAbsentName_WhenRemoveRequested_ThenReturnsNoContentWithoutChange()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await AddShoppingItemAsync(client, "milk");
+
+        var response = await client.DeleteAsync("/shopping/yogurt");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenShoppingItems_WhenRequested_ThenIncludesShoppingSection()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+        await AddShoppingItemAsync(client, "milk");
+        await AddShoppingItemAsync(client, "yogurt");
+
+        var response = await client.GetAsync("/reports/morning?date=2026-08-04");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var report = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        report.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("5");
+        report
+            .RootElement.GetProperty("shopping")
+            .EnumerateArray()
+            .Select(x => x.GetProperty("name").GetString())
+            .ShouldBe(["milk", "yogurt"]);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenNoShoppingItems_WhenRequested_ThenShoppingSectionIsEmpty()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/reports/morning?date=2026-08-04");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var report = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        report.RootElement.GetProperty("shopping").GetArrayLength().ShouldBe(0);
+    }
+
+    private static async Task<long> AddShoppingItemAsync(HttpClient client, string name)
+    {
+        using var response = await client.PostAsJsonAsync("/shopping", new { name });
+        using var item = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return item.RootElement.GetProperty("id").GetInt64();
     }
 
     private static async Task<long> CreateTaskAsync(

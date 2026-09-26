@@ -33,6 +33,7 @@ app.UseExceptionHandler();
 
 app.MapTaskEndpoints();
 app.MapRecurringTaskEndpoints();
+app.MapShoppingEndpoints();
 app.MapReportEndpoints();
 app.MapMcp("/mcp");
 

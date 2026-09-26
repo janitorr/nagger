@@ -230,13 +230,63 @@ public sealed class McpTaskTools(IMediator mediator, ILogger<McpTaskTools> logge
         );
 
     [McpServerTool(
+        Name = "add_shopping_item",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(McpShoppingItemResponse)
+    )]
+    [Description(
+        "Use when the user is running low on a household item they need to buy, such as groceries. Adds the item to the shopping list by name; adding a name already on the list returns the existing item without creating a duplicate."
+    )]
+    public Task<CallToolResult> AddShoppingItem(
+        [RequiredAttribute, Description("Required nonempty item name, for example milk.")] string? name,
+        CancellationToken cancellationToken
+    ) =>
+        Run(async () =>
+            McpShoppingItemResponse.From(
+                (await mediator.Send(new AddShoppingItemCommand(name), cancellationToken)).Item
+            )
+        );
+
+    [McpServerTool(
+        Name = "remove_shopping_item",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(McpShoppingRemovalResponse)
+    )]
+    [Description(
+        "Use when the user has bought or no longer needs an item on the shopping list. Removes the item by name; removing a name that is not on the list is a no-op."
+    )]
+    public Task<CallToolResult> RemoveShoppingItem(
+        [RequiredAttribute, Description("Required item name to remove, for example milk.")] string? name,
+        CancellationToken cancellationToken
+    ) =>
+        Run(async () =>
+            new McpShoppingRemovalResponse(await mediator.Send(new RemoveShoppingItemCommand(name), cancellationToken))
+        );
+
+    [McpServerTool(
+        Name = "list_shopping_items",
+        ReadOnly = true,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(McpShoppingListResponse)
+    )]
+    [Description("Use to discover the items currently on the shopping list.")]
+    public Task<CallToolResult> ListShoppingItems(CancellationToken cancellationToken) =>
+        Run(async () =>
+            new McpShoppingListResponse(
+                (await mediator.Send(new ListShoppingItemsQuery(), cancellationToken))
+                    .Select(McpShoppingItemResponse.From)
+                    .ToArray()
+            )
+        );
+
+    [McpServerTool(
         Name = "get_morning_report",
         ReadOnly = true,
         UseStructuredContent = true,
         OutputSchemaType = typeof(McpMorningReportResponse)
     )]
     [Description(
-        "Use to review active one-shot tasks and recurring obligations for a specific date in the configured timezone. Returns due-today and overdue items plus upcoming items within the next seven days, with a type field distinguishing one-shot (one-shot task id) from recurring (recurring template id) items, and daysOverdue/daysUntilDue timing fields, without changing task state."
+        "Use to review active one-shot tasks and recurring obligations for a specific date in the configured timezone. Returns due-today and overdue items plus upcoming items within the next seven days, with a type field distinguishing one-shot (one-shot task id) from recurring (recurring template id) items, and daysOverdue/daysUntilDue timing fields, plus the open shopping-list items, without changing task state."
     )]
     public Task<CallToolResult> GetMorningReport(
         [
@@ -402,12 +452,22 @@ public sealed record McpRecurringInstanceResponse(
         );
 }
 
+public sealed record McpShoppingListResponse(IReadOnlyList<McpShoppingItemResponse> Shopping);
+
+public sealed record McpShoppingItemResponse(long Id, string Name)
+{
+    public static McpShoppingItemResponse From(ShoppingItem item) => new(item.Id, item.Name);
+}
+
+public sealed record McpShoppingRemovalResponse(string Name);
+
 public sealed record McpMorningReportResponse(
     string SchemaVersion,
     DateTimeOffset GeneratedAt,
     string Date,
     McpMorningReportSummaryResponse Summary,
-    IReadOnlyList<McpMorningReportItemResponse> Items
+    IReadOnlyList<McpMorningReportItemResponse> Items,
+    IReadOnlyList<McpShoppingItemResponse> Shopping
 )
 {
     public static McpMorningReportResponse From(MorningReport report) =>
@@ -430,7 +490,8 @@ public sealed record McpMorningReportResponse(
                     item.DaysOverdue,
                     item.DaysUntilDue
                 ))
-                .ToList()
+                .ToList(),
+            report.Shopping.Select(McpShoppingItemResponse.From).ToList()
         );
 }
 

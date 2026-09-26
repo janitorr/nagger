@@ -1,8 +1,8 @@
 # Nagger Usage
 
 Nagger is a local task service with a REST JSON API and an MCP server for a
-personal-assistant LLM. It stores one-shot and recurring tasks and generates the
-morning report. Start it with:
+personal-assistant LLM. It stores one-shot and recurring tasks and a name-keyed
+shopping list, and generates the morning report. Start it with:
 
 ```bash
 dotnet run --project src/Nagger.Host
@@ -31,7 +31,10 @@ endpoint exposes these tools:
 | `resume_recurring_task` | Resume a paused recurring template and its current instance by template `id`. |
 | `cancel_recurring_task` | Cancel a recurring template and all its instances by template `id`. |
 | `list_recurring_tasks` | Discover recurring templates, their next due date, and their lifecycle-tool `id` values. |
-| `get_morning_report` | Read the morning report for a `YYYY-MM-DD` `date`. |
+| `add_shopping_item` | Add a restock item to the shopping list by `name`; adding a name already on the list is a no-op. |
+| `remove_shopping_item` | Remove a shopping-list item by `name`; removing an absent name is a no-op. |
+| `list_shopping_items` | Discover the open shopping-list items and their names. |
+| `get_morning_report` | Read the morning report for a `YYYY-MM-DD` `date`, including open shopping-list items. |
 
 Tool results contain structured task and report data using the same fields as
 the REST API. Invalid inputs, invalid state transitions, and unknown task IDs
@@ -259,6 +262,77 @@ Each template includes `nextDueAt`, the due timestamp of its current open instan
 curl http://localhost:5246/tasks/recurring
 ```
 
+## Shopping List
+
+The shopping list holds dateless restock items such as groceries ("milk",
+"yogurt"). Items are keyed by name, with no due date and no lifecycle beyond
+being on the list or removed. The morning report lists the open items.
+
+### Add A Shopping Item
+
+`POST /shopping`
+
+Request payload:
+
+```json
+{
+  "name": "milk"
+}
+```
+
+`name` is required and nonempty after surrounding whitespace is trimmed. Adding
+is idempotent: names are matched case-insensitively and ignoring surrounding
+whitespace, so adding a name already on the list returns the existing item
+without creating a duplicate.
+
+Successful response for a new item: `201 Created`
+
+```json
+{
+  "id": 1,
+  "name": "milk"
+}
+```
+
+When the name is already on the list, the response is `200 OK` with the existing
+item representation.
+
+### Remove A Shopping Item
+
+`DELETE /shopping/{name}`
+
+Removes the item whose `name` matches case-insensitively and ignoring
+surrounding whitespace. Removing an absent name is a no-op. The response is
+`204 No Content`.
+
+```bash
+curl --request DELETE http://localhost:5246/shopping/milk
+```
+
+### List Shopping Items
+
+`GET /shopping`
+
+Returns `200 OK` with an array of item representations ordered by ascending
+`id`; `[]` when the list is empty.
+
+```json
+[
+  {
+    "id": 1,
+    "name": "milk"
+  },
+  {
+    "id": 2,
+    "name": "yogurt"
+  }
+]
+```
+
+```bash
+curl http://localhost:5246/shopping
+```
+
 ## Get A Morning Report
 
 `GET /reports/morning?date=YYYY-MM-DD`
@@ -273,7 +347,7 @@ Response: `200 OK`
 
 ```json
 {
-  "schemaVersion": "4",
+  "schemaVersion": "5",
   "generatedAt": "2026-08-03T10:00:00+00:00",
   "date": "2026-08-04",
   "summary": {
@@ -309,6 +383,12 @@ Response: `200 OK`
       "daysOverdue": null,
       "daysUntilDue": 3
     }
+  ],
+  "shopping": [
+    {
+      "id": 1,
+      "name": "milk"
+    }
   ]
 }
 ```
@@ -319,6 +399,11 @@ then upcoming reminders, each earliest due first. Within a single due date,
 items are ordered by due time. Items with an identical due timestamp have no
 specified relative order. Ordering never changes the `summary` counts or any
 reminder state.
+
+The report also includes a read-only `shopping` array listing the open
+shopping-list items, each with `id` and `name`, ordered by ascending `id`; it is
+`[]` when the list is empty. Generating the report does not change shopping-list
+state.
 
 The configured `Nagger:TimeZone` (default `Europe/Helsinki`) determines each
 reminder's local due date. The report classifies active reminders as:

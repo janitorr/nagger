@@ -11,7 +11,8 @@ public sealed record MorningReport(
     DateTimeOffset GeneratedAt,
     DateOnly Date,
     MorningReportSummary Summary,
-    IReadOnlyList<MorningReportItem> Items
+    IReadOnlyList<MorningReportItem> Items,
+    IReadOnlyList<ShoppingItem> Shopping
 );
 
 public sealed record MorningReportSummary(int DueToday, int Overdue, int Upcoming);
@@ -29,6 +30,7 @@ public sealed record MorningReportItem(
 public sealed class MorningReportHandler(
     ITaskStore store,
     IRecurringTaskInstanceReader instanceReader,
+    IShoppingItemStore shoppingItemStore,
     TimeProvider timeProvider
 ) : IQueryHandler<MorningReportQuery, MorningReport>
 {
@@ -49,6 +51,7 @@ public sealed class MorningReportHandler(
 
         var tasks = await store.GetActiveAsync(cancellationToken);
         var instances = await instanceReader.GetActiveAsync(cancellationToken);
+        var shopping = await shoppingItemStore.GetAllAsync(cancellationToken);
 
         var dueToday = 0;
         var overdue = 0;
@@ -84,11 +87,12 @@ public sealed class MorningReportHandler(
         items = items.OrderBy(x => x.DueAt).ToList();
 
         return new MorningReport(
-            "4",
+            "5",
             timeProvider.GetUtcNow(),
             reportDate,
             new MorningReportSummary(dueToday, overdue, upcoming),
-            items
+            items,
+            shopping.OrderBy(x => x.Id).ToList()
         );
     }
 
