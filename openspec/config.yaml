@@ -1,13 +1,28 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Project context: injected into every OpenSpec artifact prompt.
+# Kept to facts an artifact author needs and might otherwise get wrong;
+# see AGENTS.md for the stack, layout, and quality gates.
+context: |
+  Nagger is a local, single-user reminder service exposed to a personal-assistant LLM
+  through REST and MCP. It stores explicit task state and produces a deterministic
+  morning report; the LLM summarizes, it never infers task state from prose.
+
+  Stack: .NET 10 (C#), ASP.NET Core Minimal APIs, EF Core + SQLite, Mediator dispatch.
+  Surfaces: REST JSON API and a streamable-HTTP MCP server at /mcp, sharing one Core task domain.
+
+  Modules: src/Nagger.Core owns product behavior and vertical feature slices under Tasks/;
+  src/Nagger.Host is the HTTP/SQLite adapter and composition root. Core must not reference
+  ASP.NET Core, EF Core/SQLite, configuration, or the system clock.
+
+  Contracts: openspec/specs/ holds behavioral contracts; USAGE.md documents endpoints,
+  payloads, state transitions, and errors. Task state changes only through validated commands.
+
+  Domain rules: timestamps are ISO-8601 with an explicit UTC offset; report dates use the
+  configured IANA timezone (default Europe/Helsinki); the morning report is read-only.
+
+  Quality gates: CSharpier formatting and CA analyzer warnings fail the build; Core mutation
+  testing (Stryker) must stay at or above 75%.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
