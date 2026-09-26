@@ -382,6 +382,23 @@ public sealed class ApiTests
     }
 
     [Fact]
+    public async Task AddShoppingItem_GivenNameWithWhitespace_WhenAddRequested_ThenPersistsTrimmedName()
+    {
+        using var factory = new NaggerFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/shopping", new { name = "  Whole Milk  " });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        using var item = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        item.RootElement.GetProperty("name").GetString().ShouldBe("Whole Milk");
+        using var scope = factory.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<NaggerDbContext>().ShoppingItems.SingleAsync()).Name.ShouldBe(
+            "Whole Milk"
+        );
+    }
+
+    [Fact]
     public async Task AddShoppingItem_GivenExistingNameVariant_WhenAddRequested_ThenReturnsOkWithoutDuplicate()
     {
         using var factory = new NaggerFactory();

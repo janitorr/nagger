@@ -19,6 +19,18 @@ public sealed class ShoppingListFeatureTests
         store.Items.ShouldHaveSingleItem().ShouldBe(result.Item);
     }
 
+    [Fact]
+    public async Task AddShoppingItem_GivenNewNameWithWhitespace_WhenAddRequested_ThenPersistsTrimmedNamePreservingCase()
+    {
+        var store = new MemoryShoppingItemStore();
+
+        var result = await new AddShoppingItemHandler(store).Handle(new("  Whole Milk  "), default);
+
+        result.Item.Name.ShouldBe("Whole Milk");
+        result.Created.ShouldBeTrue();
+        store.Items.ShouldHaveSingleItem().Name.ShouldBe("Whole Milk");
+    }
+
     [Theory]
     [InlineData("milk")]
     [InlineData("Milk")]
@@ -50,6 +62,30 @@ public sealed class ShoppingListFeatureTests
 
         exception.Errors["name"].ShouldBe(["Name is required."]);
         store.Items.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AddShoppingItem_GivenTooLongName_WhenAddRequested_ThenRejectsWithoutPersisting()
+    {
+        var store = new MemoryShoppingItemStore();
+
+        var exception = await Should.ThrowAsync<ValidationException>(async () =>
+            await new AddShoppingItemHandler(store).Handle(new(new string('a', 201)), default)
+        );
+
+        exception.Errors["name"].ShouldBe(["Name must be at most 200 characters."]);
+        store.Items.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AddShoppingItem_GivenMaxLengthName_WhenAddRequested_ThenPersistsItem()
+    {
+        var store = new MemoryShoppingItemStore();
+        var name = new string('a', 200);
+
+        var result = await new AddShoppingItemHandler(store).Handle(new(name), default);
+
+        result.Item.Name.ShouldBe(name);
     }
 
     [Fact]
