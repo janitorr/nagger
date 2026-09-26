@@ -1,6 +1,8 @@
-# Nagger API Usage
+# Nagger Usage
 
-Nagger is a local JSON API for one-shot reminders. Start it with:
+Nagger is a local task service with a REST JSON API and an MCP server for a
+personal-assistant LLM. It stores one-shot and recurring tasks and generates the
+morning report. Start it with:
 
 ```bash
 dotnet run --project src/Nagger.Host
