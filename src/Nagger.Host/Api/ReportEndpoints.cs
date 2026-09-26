@@ -24,7 +24,8 @@ public sealed record MorningReportResponse(
     DateTimeOffset GeneratedAt,
     string Date,
     MorningReportSummaryResponse Summary,
-    IReadOnlyList<MorningReportItemResponse> Items
+    IReadOnlyList<MorningReportItemResponse> Items,
+    IReadOnlyList<ShoppingItemResponse> Shopping
 )
 {
     public static MorningReportResponse From(MorningReport report) =>
@@ -43,7 +44,8 @@ public sealed record MorningReportResponse(
                     x.DaysOverdue,
                     x.DaysUntilDue
                 ))
-                .ToList()
+                .ToList(),
+            report.Shopping.Select(ShoppingItemResponse.From).ToList()
         );
 }
 

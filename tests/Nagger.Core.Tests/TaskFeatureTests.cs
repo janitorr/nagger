@@ -93,12 +93,13 @@ public sealed class TaskFeatureTests
         var handler = new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceReader(),
+            new MemoryShoppingItemStore(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         );
         var first = await handler.Handle(new("2026-08-04"), default);
         var second = await handler.Handle(new("2026-08-04"), default);
         first.Summary.ShouldBe(new MorningReportSummary(1, 1, 1));
-        first.SchemaVersion.ShouldBe("4");
+        first.SchemaVersion.ShouldBe("5");
         first.Items.Count.ShouldBe(3);
         first.Items.Single(x => x.Id == 1).DueState.ShouldBe("due_today");
         first.Items.Single(x => x.Id == 1).Type.ShouldBe("one-shot");
@@ -124,6 +125,7 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceReader(),
+            new MemoryShoppingItemStore(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
         report.Summary.ShouldBe(new MorningReportSummary(0, 0, 1));
@@ -143,9 +145,55 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceReader(),
+            new MemoryShoppingItemStore(),
             new TestTimeProvider(timezone)
         ).Handle(new("2026-08-04"), default);
         report.Summary.DueToday.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenShoppingItems_WhenRequested_ThenListsThemInAscendingIdOrder()
+    {
+        var shopping = new MemoryShoppingItemStore(new ShoppingItem(2, "yogurt"), new ShoppingItem(1, "milk"));
+        var report = await new MorningReportHandler(
+            new MemoryStore(),
+            new MemoryRecurringTaskInstanceReader(),
+            shopping,
+            new TestTimeProvider(TimeZoneInfo.Utc)
+        ).Handle(new("2026-08-04"), default);
+        report.SchemaVersion.ShouldBe("5");
+        report.Shopping.Select(x => x.Id).ShouldBe([1, 2]);
+        report.Shopping.Select(x => x.Name).ShouldBe(["milk", "yogurt"]);
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenNoShoppingItems_WhenRequested_ThenShoppingIsEmpty()
+    {
+        var report = await new MorningReportHandler(
+            new MemoryStore(),
+            new MemoryRecurringTaskInstanceReader(),
+            new MemoryShoppingItemStore(),
+            new TestTimeProvider(TimeZoneInfo.Utc)
+        ).Handle(new("2026-08-04"), default);
+        report.Shopping.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task MorningReport_GivenShoppingItems_WhenRequestedRepeatedly_ThenDoesNotChangeShoppingState()
+    {
+        var shopping = new MemoryShoppingItemStore(new ShoppingItem(1, "milk"));
+        var handler = new MorningReportHandler(
+            new MemoryStore(),
+            new MemoryRecurringTaskInstanceReader(),
+            shopping,
+            new TestTimeProvider(TimeZoneInfo.Utc)
+        );
+        var first = await handler.Handle(new("2026-08-04"), default);
+        var second = await handler.Handle(new("2026-08-04"), default);
+        shopping.Items.ShouldHaveSingleItem();
+        shopping.Adds.ShouldBe(0);
+        shopping.Removes.ShouldBe(0);
+        first.Shopping.ShouldBe(second.Shopping);
     }
 
     [Fact]
@@ -197,6 +245,7 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             instanceStore,
+            new MemoryShoppingItemStore(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
         report.Summary.ShouldBe(new MorningReportSummary(3, 2, 2));
@@ -230,6 +279,7 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             instanceStore,
+            new MemoryShoppingItemStore(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
         report.Summary.ShouldBe(new MorningReportSummary(2, 0, 0));
@@ -258,6 +308,7 @@ public sealed class TaskFeatureTests
         var report = await new MorningReportHandler(
             store,
             new MemoryRecurringTaskInstanceReader(),
+            new MemoryShoppingItemStore(),
             new TestTimeProvider(TimeZoneInfo.Utc)
         ).Handle(new("2026-08-04"), default);
         report.Summary.ShouldBe(new MorningReportSummary(0, 0, 0));
@@ -303,6 +354,7 @@ public sealed class TaskFeatureTests
         var handler = new MorningReportHandler(
             new MemoryStore(),
             new MemoryRecurringTaskInstanceReader(),
+            new MemoryShoppingItemStore(),
             new TestTimeProvider()
         );
         var exception = await Should.ThrowAsync<ValidationException>(async () =>

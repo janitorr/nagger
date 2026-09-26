@@ -36,3 +36,14 @@ public interface IRecurringTaskInstanceReader
 {
     ValueTask<IReadOnlyList<RecurringTaskInstance>> GetActiveAsync(CancellationToken cancellationToken);
 }
+
+public interface IShoppingItemStore
+{
+    ValueTask<ShoppingItem> AddAsync(ShoppingItem item, CancellationToken cancellationToken);
+
+    ValueTask<ShoppingItem?> GetByNameAsync(string name, CancellationToken cancellationToken);
+
+    ValueTask RemoveAsync(ShoppingItem item, CancellationToken cancellationToken);
+
+    ValueTask<IReadOnlyList<ShoppingItem>> GetAllAsync(CancellationToken cancellationToken);
+}

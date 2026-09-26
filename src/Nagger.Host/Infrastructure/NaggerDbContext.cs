@@ -7,6 +7,7 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
     public DbSet<TaskEntity> Tasks => Set<TaskEntity>();
     public DbSet<RecurringTaskTemplateEntity> RecurringTaskTemplates => Set<RecurringTaskTemplateEntity>();
     public DbSet<RecurringTaskInstanceEntity> RecurringTaskInstances => Set<RecurringTaskInstanceEntity>();
+    public DbSet<ShoppingItemEntity> ShoppingItems => Set<ShoppingItemEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,6 +48,12 @@ public sealed class NaggerDbContext(DbContextOptions<NaggerDbContext> options) :
         instance.Property(x => x.UpdatedAt).IsRequired();
         instance.HasIndex(x => x.RecurringTaskId);
         instance.HasIndex(x => x.Status);
+
+        var shoppingItem = modelBuilder.Entity<ShoppingItemEntity>();
+        shoppingItem.ToTable("shopping_items");
+        shoppingItem.HasKey(x => x.Id);
+        shoppingItem.Property(x => x.Name).IsRequired().UseCollation("NOCASE");
+        shoppingItem.HasIndex(x => x.Name).IsUnique();
     }
 }
 
@@ -87,4 +94,10 @@ public sealed class RecurringTaskTemplateEntity
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? CancelledAt { get; set; }
     public ICollection<RecurringTaskInstanceEntity> Instances { get; set; } = [];
+}
+
+public sealed class ShoppingItemEntity
+{
+    public long Id { get; set; }
+    public required string Name { get; set; }
 }
