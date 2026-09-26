@@ -7,7 +7,7 @@ Record a dateless list of household items the user needs to buy and manage that 
 ## ADDED Requirements
 
 ### Requirement: Add a shopping item
-The service SHALL provide `POST /shopping` to add a shopping item. The request SHALL include a `name` that is nonempty after surrounding whitespace is trimmed.
+The service SHALL provide `POST /shopping` to add a shopping item. The request SHALL include a `name` that is nonempty after surrounding whitespace is trimmed and is at most 200 characters.
 
 Adding is idempotent by name: names SHALL be matched case-insensitively and ignoring surrounding whitespace, so adding a name that is already on the list SHALL NOT create a duplicate. When the name is new, the service SHALL persist an item with a stable service-assigned numeric `id` and return `201 Created` with the item representation containing `id` and `name`. When the name is already on the list, the service SHALL return `200 OK` with the existing item representation.
 
@@ -21,6 +21,10 @@ Adding is idempotent by name: names SHALL be matched case-insensitively and igno
 
 #### Scenario: Reject an empty name
 - **WHEN** a client posts a missing or whitespace-only `name`
+- **THEN** the service returns a structured JSON validation error and does not persist an item
+
+#### Scenario: Reject an over-long name
+- **WHEN** a client posts a `name` longer than 200 characters
 - **THEN** the service returns a structured JSON validation error and does not persist an item
 
 ### Requirement: Remove a shopping item

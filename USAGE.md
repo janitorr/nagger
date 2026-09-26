@@ -280,10 +280,10 @@ Request payload:
 }
 ```
 
-`name` is required and nonempty after surrounding whitespace is trimmed. Adding
-is idempotent: names are matched case-insensitively and ignoring surrounding
-whitespace, so adding a name already on the list returns the existing item
-without creating a duplicate.
+`name` is required, nonempty after surrounding whitespace is trimmed, and at
+most 200 characters. Adding is idempotent: names are matched case-insensitively
+and ignoring surrounding whitespace, so adding a name already on the list returns
+the existing item without creating a duplicate.
 
 Successful response for a new item: `201 Created`
 
