@@ -1,5 +1,21 @@
 # Nagger
 
+## Tech Stack
+
+- .NET 10 (C#) with ASP.NET Core Minimal APIs, running on ARM64 Linux.
+- `src/Nagger.Core` holds product behavior; `src/Nagger.Host` is the HTTP/SQLite adapter and composition root.
+- EF Core with the SQLite provider; schema changes ship as versioned migrations applied on Host startup.
+- Mediator dispatches Core commands and queries; a pipeline behavior owns dispatch diagnostics.
+- The MCP endpoint uses the Model Context Protocol streamable-HTTP transport at `/mcp`.
+- xUnit + Shouldly for tests, Stryker.NET for Core mutation testing, and CSharpier for formatting.
+
+## Where To Look First
+
+- Behavioral contracts: `openspec/specs/`.
+- API endpoints, payloads, state transitions, and errors: `USAGE.md`.
+- Deployment and Hermes wiring: `docs/hermes-integration.md`.
+- Canonical feature pattern: follow an existing vertical slice in `src/Nagger.Core/Tasks/` (for example `ManageRecurringTaskLifecycle.cs`) and its Core tests.
+
 ## Commands
 
 - Requires the .NET 10 SDK. Build the whole solution with `dotnet build Nagger.slnx`; run all tests with `dotnet test Nagger.slnx`.
