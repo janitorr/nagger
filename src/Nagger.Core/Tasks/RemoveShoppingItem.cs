@@ -14,10 +14,7 @@ public sealed class RemoveShoppingItemHandler(IShoppingItemStore store)
     public async ValueTask<string> Handle(RemoveShoppingItemCommand command, CancellationToken cancellationToken)
     {
         var name = command.ParseName();
-        var existing = await store.GetByNameAsync(name, cancellationToken);
-        if (existing is not null)
-            await store.RemoveAsync(existing, cancellationToken);
-
+        await store.RemoveByNameAsync(name, cancellationToken);
         return name;
     }
 }
