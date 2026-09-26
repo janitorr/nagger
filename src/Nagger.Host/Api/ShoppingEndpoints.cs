@@ -12,9 +12,9 @@ public static class ShoppingEndpoints
 
         group.MapPost(
             "",
-            async (AddShoppingItemRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+            async (AddShoppingItemCommand command, IMediator mediator, CancellationToken cancellationToken) =>
             {
-                var result = await mediator.Send(new AddShoppingItemCommand(request.Name), cancellationToken);
+                var result = await mediator.Send(command, cancellationToken);
                 var response = ShoppingItemResponse.From(result.Item);
                 return result.Created ? Results.Created($"/shopping/{result.Item.Id}", response) : Results.Ok(response);
             }
@@ -40,8 +40,6 @@ public static class ShoppingEndpoints
         );
     }
 }
-
-public sealed record AddShoppingItemRequest(string? Name);
 
 public sealed record ShoppingItemResponse(long Id, string Name)
 {
